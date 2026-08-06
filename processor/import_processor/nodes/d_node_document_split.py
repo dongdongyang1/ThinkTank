@@ -259,8 +259,8 @@ class NodeDocumentSplit(BaseNode):
                 "content":full_text,  #子Chunk序号
                 "parent_title":title,   #父章节标题（用于后续合并）
                 "part": idx,   # 子Chunk序号,与标题无关，标注顺序
-                "file_title":section.get("file_title"), # 所属文件标题，路径+文件名
-                "end_part": idx,  # 原生单分片，起始=结束
+                "file_title":section.get("file_title") # 所属文件标题，路径+文件名
+
             })
 
         self.logger.debug(f"超长章节切分完成：{title} → 生成{len(sub_sections)}个子Chunk")
@@ -289,8 +289,7 @@ class NodeDocumentSplit(BaseNode):
                     "content": sec.get("content", ""),
                     "parent_title": sec.get("parent_title", ""),
                     "part": sec.get("part",1),  # 起始分片固定不变
-                    "file_title": sec.get("file_title", ""),
-                    "end_part": sec.get("part",1)  # 结束分片
+                    "file_title": sec.get("file_title", "")
                 }
                 continue
 
@@ -323,8 +322,7 @@ class NodeDocumentSplit(BaseNode):
                     "content": sec.get("content", ""),
                     "parent_title":  sec.get("parent_title", ""),
                     "part": sec.get("part",1),
-                    "file_title": sec.get("file_title", ""),
-                    "end_part": sec.get("part",1)
+                    "file_title": sec.get("file_title", "")
                 }
 
         if current_chunk is not None:
