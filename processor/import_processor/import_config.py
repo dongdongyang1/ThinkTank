@@ -24,6 +24,7 @@ class ImportConfig:
     item_name_chunk_k: int = 3  # 商品名识别时使用的切片数量
     item_name_chunk_size: int = 2500  # 商品名识别时使用的切片内容长度
 
+
     image_extensions: Set[str] = field(
         default_factory=lambda: {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
     )
@@ -59,7 +60,6 @@ class ImportConfig:
         default_factory=lambda: os.getenv("ENTITY_NAME_COLLECTION", "")
     )
 
-
     # ==================== MinIO 配置 ====================
     minio_endpoint: str = field(
         default_factory=lambda: os.getenv("MINIO_ENDPOINT", "")
@@ -84,6 +84,8 @@ class ImportConfig:
     # ==================== 速率限制 ====================
     requests_per_minute: int = 15  # 图片总结 API 速率限制
 
+
+
     @classmethod
     def from_env(cls) -> "ImportConfig":
         """从环境变量加载配置"""
@@ -105,3 +107,10 @@ def get_config() -> ImportConfig:
     if _config is None:
         _config = ImportConfig.from_env()
     return _config
+
+
+def get_file_dir():
+    output_dir = os.getenv("FILE_DIR")
+    if output_dir is not None and output_dir.strip() !="":
+        return output_dir
+

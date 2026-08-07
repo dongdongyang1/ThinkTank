@@ -37,19 +37,28 @@ class NodeEntry(BaseNode):
         if not import_file_path_obj.exists():
             raise FileProcessingError(message=f"文件{import_file_path_obj.name}不存在")
 
+
+
+
         # 3. 检查文件后缀
         file_suffix = import_file_path_obj.suffix
         if file_suffix == ".pdf":
             state["is_pdf_read_enabled"] = True
             state["pdf_path"] = import_file_path
+
         elif file_suffix == ".md":
             state["is_md_read_enabled"] = True
             state["md_path"] = import_file_path
+            md_path_obj = Path(state["md_path"])
+            # 读取MD文件内容存入state
+            md_content = md_path_obj.read_text(encoding="utf-8")
+            state["md_content"] = md_content
         else:
             raise ValidationError(message=f"该文件的后缀格式{import_file_path_obj.stem}不支持")
 
         # 4. 获取上传文件的标题，更新到state中
         state["file_title"] = import_file_path_obj.stem
+        state["file_dir"] = str(import_file_path_obj.parent)
 
         # 5. 返回state
         return state

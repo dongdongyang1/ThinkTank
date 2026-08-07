@@ -1,8 +1,13 @@
 import json
+import sys
+from pathlib import Path
+
+# 获取当前文件绝对路径，向上3层锁定项目根目录
+root = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(root))
 
 from langgraph.constants import END
 from langgraph.graph import StateGraph
-
 from processor.import_processor.base import setup_logging
 from processor.import_processor.nodes.a_node_entry import NodeEntry
 from processor.import_processor.nodes.b_node_pdf_to_md import NodePDFToMD
@@ -14,7 +19,7 @@ from processor.import_processor.nodes.g_node_import_milvus import NodeImportMilv
 from processor.import_processor.state import ImportGraphState
 
 
-class TTImportWorkflow:
+class KBImportWorkflow:
     """
     知识库导入工作流
     """
@@ -114,8 +119,8 @@ if __name__=="__main__":
     setup_logging()
 
     # 定义初始状态
-    init_state= {"import_file_path":r"D:\PantumPCNV1.2.pdf"}
-    workflow = TTImportWorkflow()
+    init_state= {"import_file_path":r"D:\H3C LA2608室内无线网关 用户手册-6W100-整本手册.pdf"}
+    workflow = KBImportWorkflow()
 
     # 方式1：实例化后使用（流式输出）
     for event in workflow.run(init_state,stream=True):

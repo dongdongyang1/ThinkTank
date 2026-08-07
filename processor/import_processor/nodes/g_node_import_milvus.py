@@ -118,12 +118,12 @@ class NodeImportMilvus(BaseNode):
         # 2. 集合不存在则创建
         collection_name = milvus_config.chunks_collection
 
-        # if not milvus_client.has_collection(collection_name):
-        #     self._create_chunks_collection(collection_name,milvus_client,vector_dimension)
-        # else:
-        #     # 集合已存在但可能未加载（如 Milvus 重启后），显式加载
-        #     milvus_client.load_collection(collection_name)
-        #     self.logger.info(f"集合 '{collection_name}' 已加载")
+        if not milvus_client.has_collection(collection_name):
+            self._create_chunks_collection(collection_name,milvus_client,vector_dimension)
+        else:
+            # 集合已存在但可能未加载（如 Milvus 重启后），显式加载
+            milvus_client.load_collection(collection_name)
+            self.logger.info(f"集合 '{collection_name}' 已加载")
 
 
         return milvus_client

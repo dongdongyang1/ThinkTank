@@ -70,7 +70,7 @@ class NodeDocumentSplit(BaseNode):
 
         md_content = state.get("md_content")
         if not md_content:
-            raise StateFieldError(field_name="file_title", message="文件内容不能为空", expected_type=str)
+            raise StateFieldError(field_name="md_content", message="文件内容不能为空", expected_type=str)
 
         # 2、基础标准化：统一换行符
         md_content = md_content.replace("\r\n","\n").replace("\r","\n")
@@ -351,7 +351,7 @@ class NodeDocumentSplit(BaseNode):
         """
         try:
             # 拼接备份文件路径：固定文件名，便于查找
-            backup_path = Path("D:/doc") / state.get("file_title") / "chunks.json"
+            backup_path = Path(state.get("file_dir", ".")) / state.get("file_title") / "chunks.json"
             backup_path.parent.mkdir(parents=True, exist_ok=True)
             # 写入JSON文件：保留中文/格式化缩进，便于人工查看
 

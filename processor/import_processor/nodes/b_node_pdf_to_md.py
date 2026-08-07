@@ -38,7 +38,7 @@ class NodePDFToMD(BaseNode):
 
         # 5 .更新state状态
         state["md_path"] = md_path
-        state["md_comtent"] = md_content
+        state["md_content"] = md_content
 
         return state
 
@@ -66,12 +66,12 @@ class NodePDFToMD(BaseNode):
 
 
         # 3. PDF有效性检验
-        if not pdf_path_obj:
+        if not pdf_path_obj.exists():
             raise FileProcessingError(message = f"PDF文件{pdf_path_obj.name}不存在")
 
         # 4. 确保输出目录存在，不存在则递归创建
         if not file_dir_obj.exists():
-            self.config.info(f"输出目录不存在，自动创建：{file_dir_obj.absolute()}")
+            self.logger.info(f"输出目录不存在，自动创建：{file_dir_obj.absolute()}")
             file_dir_obj.mkdir(parents=True,exist_ok=True)
 
         return pdf_path_obj,file_dir_obj
@@ -124,7 +124,7 @@ class NodePDFToMD(BaseNode):
             if res_upload.status_code != 200:
                 raise PdfConversionError(f"文件上传失败：状态码：{res_upload.status_code}，响应结果：{res_upload}")
 
-                self.logger.info(f"文件上传成功！")
+            self.logger.info(f"文件上传成功！")
 
         # 3. 批量获取任务结果(轮询设置)
         poll_url = f"{mineru_config.base_url}/extract-results/batch/{batch_id}"

@@ -76,7 +76,7 @@ class NodeMDImg(BaseNode):
         """
 
         # 1、参数非空校验
-        md_path = state["md_path"]
+        md_path = state.get("md_path")
         if not md_path:
             raise StateFieldError(field_name='md_path', expected_type=str)
 
@@ -88,7 +88,7 @@ class NodeMDImg(BaseNode):
             raise FileProcessingError(message=f"MD文件{md_path_obj.name}不存在")
 
         # 4、获取md_content
-        md_content = state["md_content"]
+        md_content = state.get("md_content")
 
         # 5、组装图片文件夹路径：图片文件夹固定为MD文件同级的images目录
         images_dir = md_path_obj.parent / "images"

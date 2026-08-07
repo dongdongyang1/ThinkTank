@@ -12,6 +12,8 @@ from typing import TypedDict, List
 
 import copy
 
+from processor.import_processor.import_config import get_config
+
 
 class ImportGraphState(TypedDict, total=False):
 
@@ -88,6 +90,7 @@ GRAPH_DEFAULT_STATE: ImportGraphState = {
 
     "item_name": "",
 
+
 }
 
 #overrides覆盖，创建状态时，一次性批量赋值覆盖字段
@@ -105,6 +108,9 @@ def create_default_state(**overrides) -> ImportGraphState:
         >>> state = create_default_state(task_id="task_001", local_file_path="doc.pdf")
     """
     state = copy.deepcopy(GRAPH_DEFAULT_STATE)
+    # 从全局配置读取file_dir填充默认目录
+    cfg = get_config()
+    state["file_dir"] = cfg.file_dir
     state.update(overrides)
     return state
 
