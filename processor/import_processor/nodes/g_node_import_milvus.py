@@ -222,6 +222,8 @@ class NodeImportMilvus(BaseNode):
                 collection_name=milvus_config.chunks_collection,
                 data=data_to_insert
             )
+            client.flush(collection_name=milvus_config.chunks_collection)
+            self.logger.info("Milvus执行Flush，数据持久化至磁盘完成")
         except Exception as e:
             raise MilvusError(
                 message=f"Milvus 批量插入失败（{len(data_to_insert)} 条数据）: {e}",
