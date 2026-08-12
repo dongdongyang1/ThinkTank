@@ -83,7 +83,7 @@ class NodeSearchEmbedding(NodeBase):
 if __name__ == "__main__":
     init_state = {
         "rewritten_query": "关于brother HAK180烫金机，如何调节转印温度？",
-        "item_names": ["BrotherHAK180烫金机", "BrotherHAK-180烫金机"]
+        "item_names": ["HAK180烫金机", "BrotherHAK-180烫金机"]
     }
     node_search_embedding = NodeSearchEmbedding()
     result = node_search_embedding(init_state)
