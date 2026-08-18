@@ -130,7 +130,7 @@ class NodePDFToMD(BaseNode):
         poll_url = f"{mineru_config.base_url}/extract-results/batch/{batch_id}"
 
         start_time = time.time()
-        timeout_seconds = 600
+        timeout_seconds = 1200
         poll_interval = 3
         self.logger.info(f"【任务轮询】最大超时：{timeout_seconds}s，batch_id：{batch_id}")
 

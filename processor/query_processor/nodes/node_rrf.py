@@ -1,12 +1,11 @@
 from typing import List, Tuple, Any, Dict
-
-from processor.import_processor.base import BaseNode
+from processor.query_processor.base import NodeBase
 from processor.query_processor.logger import logger
 from processor.query_processor.state import QueryGraphState
 from utils.json_format_utils import format_json
 
 
-class NodeRrf(BaseNode):
+class NodeRrf(NodeBase):
     """
     节点功能：Reciprocal Rank Fusion
     将多路召回的结果（向量、HyDE、Web）进行加权融合排序。

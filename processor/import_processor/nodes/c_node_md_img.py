@@ -1,4 +1,5 @@
 import base64
+import io
 import json
 import logging
 import os
@@ -6,6 +7,7 @@ import re
 import time
 from collections import deque
 from pathlib import Path
+from PIL import Image
 
 from langchain_openai import ChatOpenAI
 from minio import Minio
@@ -182,7 +184,7 @@ class NodeMDImg(BaseNode):
         # 2. 循环处理图片
         for img_file,image_path,context in target_images:
             # 2.1 速率限制
-            self._apply_api_rate_limit(request_deque,max_requests = 10)
+            self._apply_api_rate_limit(request_deque,max_requests = self.config.requests_per_minute)
 
             # 2.2 调用大模型生成图片摘要
             summaries[img_file] = self._summarize_image(image_path,root_folder = doc_stem,image_content=context)
@@ -217,7 +219,7 @@ class NodeMDImg(BaseNode):
             # 计算需要等待的时长（窗口总时长 - 最早请求已存在的时长）
             sleep_duration = window_seconds-(current_time-request_times[0])
             if sleep_duration > 0:
-                logging.getLogger.warning(f"触发API速率限制，窗口{window_seconds}秒内最多{max_requests}次，需等待：{sleep_duration:.2f} 秒")
+                self.logger.warning(f"触发API速率限制，窗口{window_seconds}秒内最多{max_requests}次，需等待：{sleep_duration:.2f} 秒")
                 time.sleep(sleep_duration)
 
                 # 等待后更新当前时间，重新清理过期请求（避免等待期间有请求过期）
@@ -230,6 +232,23 @@ class NodeMDImg(BaseNode):
         request_times.append(current_time)
         self.logger.info(f"API请求时间戳已记录，当前{window_seconds}秒窗口内请求数：{len(request_times)}")
 
+    def _encode_image_for_vl(self, image_path: str, max_side: int = 1568, quality: int = 85):
+        """压缩大图并转 base64，返回 (base64_str, mime_type)"""
+        img = Image.open(image_path)
+        #处理透明通道图片：RGBA/P/LA 转 RGB
+        if img.mode in ("RGBA", "P", "LA"):
+            img = img.convert("RGB")
+        w, h = img.size
+        #计算缩放比例：长边不超过 max_side=1568像素
+        scale = min(1.0, max_side / max(w, h))
+        if scale < 1.0:
+            img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+        #内存字节缓冲区，不需要写磁盘
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG", quality=quality)
+        #buffer.getvalue()：拿到内存里 JPEG 图片的二进制字节
+        return base64.b64encode(buffer.getvalue()).decode("utf-8"), "image/jpeg"
+
     def _summarize_image(self, image_path, root_folder, image_content):
         """
            调用多模态大模型总结图片内容。
@@ -240,9 +259,9 @@ class NodeMDImg(BaseNode):
            - image_content: 图片在文档中的上下文 (前文, 后文)。
         """
         #Base64：把图片二进制文件，转换成字符串，用来直接传给大模型多模态接口
-        with open(image_path,"rb") as image_file:
-            base64_image = base64.b64encode(image_file.read()).decode("utf-8")
-
+        # with open(image_path,"rb") as image_file:
+        #     base64_image = base64.b64encode(image_file.read()).decode("utf-8")
+        base64_image, mime = self._encode_image_for_vl(image_path)
 
         try:
             chat_model = ChatOpenAI(
@@ -265,7 +284,7 @@ class NodeMDImg(BaseNode):
                             "type":"image_url",
                             "image_url":{
                                 #Base64 内嵌图  分隔符，前面是格式说明，逗号之后全部是图片 Base64 原文。
-                                "url":f"data:image/jpeg;base64,{base64_image}"
+                                 "url": f"data:{mime};base64,{base64_image}"
                             }
                         }
                     ]

@@ -118,6 +118,7 @@ def save_chat_messages(
 
     mongo_tool = get_history_mongo_tool()
     if message_id:
+        document.pop("ts", None)
         result = mongo_tool.chat_message.update_one(
             {"_id":ObjectId(message_id)},# 更新条件：主键匹配（需将字符串转为ObjectId类型）
             {"$set":document} # 更新操作：$set表示只更新指定字段，保留其他字段

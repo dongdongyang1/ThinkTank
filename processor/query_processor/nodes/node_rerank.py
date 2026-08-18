@@ -1,6 +1,6 @@
 from typing import List, Dict, Any
 
-from processor.import_processor.base import BaseNode
+from processor.query_processor.base import NodeBase
 from processor.query_processor.logger import logger
 from processor.query_processor.state import QueryGraphState
 from utils.json_format_utils import format_json
@@ -19,7 +19,7 @@ RERANK_GAP_ABS : float = 0.5
 # 断崖阈值（相对，判断低分文档）
 RERANK_GAP_RATIO : float = 0.25
 
-class NodeRerank(BaseNode):
+class NodeRerank(NodeBase):
     """
     节点功能：使用 Cross-Encoder 模型对 RRF 后的结果进行精确打分重排。
     """
@@ -54,6 +54,9 @@ class NodeRerank(BaseNode):
         final_docs = []
         # 1. 获取本地 RRF 的文档
         for rrf_doc in state.get("rrf_chunks",[]):
+            content = rrf_doc.get("content", "").strip()
+            if not content:  # 内容为空直接跳过
+                continue
             format_rrf_doc = {
                 "content" : rrf_doc.get("content"),
                 "title" : rrf_doc.get("title"),
@@ -64,6 +67,9 @@ class NodeRerank(BaseNode):
             final_docs.append(format_rrf_doc)
         # 2. 获取 web 远程的文档
         for web_doc in state.get("web_search_docs",[]):
+            content = web_doc.get("snippet", "").strip()
+            if not content:  # 网页摘要空，丢弃这条文档
+                continue
             format_web_doc = {
                 "content" : web_doc.get("snippet"),
                 "title" : web_doc.get("title"),
@@ -72,11 +78,14 @@ class NodeRerank(BaseNode):
                 "source" : "web"
             }
             final_docs.append(format_web_doc)
-
+        logger.info(f"合并后有效文档数量：{len(final_docs)}")
         return final_docs
 
     def _step_2_rerank_merged_docs(self, state:QueryGraphState, merge_muti_docs:List[Dict[str,Any]])->List[Dict[str,Any]]:
         """使用 Reranker 模型对文档进行精排"""
+        if not merge_muti_docs:
+            logger.warning("合并文档为空，跳过重排序调用")
+            return []
         try:
             user_query = state.get("rewritten_query")
             # 获取文档列表的conten字段组成列表

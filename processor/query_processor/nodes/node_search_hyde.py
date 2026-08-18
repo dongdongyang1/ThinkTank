@@ -1,7 +1,7 @@
 from typing import Optional, List
 
 from config.milvus_config import milvus_config
-from processor.import_processor.base import BaseNode
+from processor.query_processor.base import NodeBase
 from processor.query_processor.logger import logger
 from processor.query_processor.prompt.search_embedding_hyde import HYDE_PROMPT
 from processor.query_processor.state import QueryGraphState
@@ -11,7 +11,7 @@ from utils.llm_utils import get_llm_client
 from utils.milvus_utils import create_hybrid_search_requests, get_milvus_client, hybrid_search
 
 
-class NodeSearchHyde(BaseNode):
+class NodeSearchHyde(NodeBase):
     """
     节点功能：HyDE (Hypothetical Document Embedding)
     先让 LLM 生成假设性答案，再对答案进行向量检索，提高召回率。

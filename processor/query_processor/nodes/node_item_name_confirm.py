@@ -9,7 +9,7 @@ from config.milvus_config import milvus_config
 from processor.query_processor.base import NodeBase
 from processor.query_processor.logger import logger
 from processor.query_processor.prompt.item_name_confirm import ITEM_NAME_EXTRACT_TEMPLATE
-from processor.query_processor.prompt.item_name_recognition import ITEM_NAME_SYSTEM_PROMPT
+from processor.import_processor.nodes.prompt.item_name_recognition import ITEM_NAME_SYSTEM_PROMPT
 from processor.query_processor.state import QueryGraphState
 from utils.embedding_utils import generate_embeddings
 from utils.json_format_utils import format_json

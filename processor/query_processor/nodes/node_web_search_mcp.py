@@ -4,13 +4,13 @@ import json
 from agents.mcp import MCPServerStreamableHttp
 
 from config.bailian_mcp_config import mcp_config
-from processor.import_processor.base import BaseNode
+from processor.query_processor.base import NodeBase
 from processor.query_processor.logger import logger
 from processor.query_processor.state import QueryGraphState
 from utils.json_format_utils import format_json
 
 
-class NodeWebSearchMcp(BaseNode):
+class NodeWebSearchMcp(NodeBase):
     """
     节点功能，调用外部搜索引擎补充信息
     """
@@ -45,6 +45,8 @@ class NodeWebSearchMcp(BaseNode):
         if docs:
             state["web_search_docs"] = docs
             return state
+        # 无搜索结果也必须返回状态更新；返回 None 会导致 langgraph 报错
+        return {"web_search_docs": []}
 
     async def _mcp_call(self,query:str):
         search_mcp = MCPServerStreamableHttp(

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>文件导入知识库</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            max-width: 960px;
+            margin: 40px auto;
+            padding: 0 20px;
+            font-family: "Microsoft Yahei", sans-serif;
+            background-color: #f7f9fa;
+        }
+        h2 {
+            color: #222;
+        }
+        .toolbar {
+            display: flex;
+            gap:12px;
+            margin-bottom:16px;
+        }
+        .btn {
+            padding:8px 16px;
+            border-radius:6px;
+            border:none;
+            cursor:pointer;
+            font-size:14px;
+        }
+        .btn-clear {
+            background:#e5e7eb;
+            color:#333;
+        }
+        .btn-clear:hover {
+            background:#d1d5db;
+        }
+        .upload-box {
+            border: 2px dashed #999;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            background:#ffffff;
+            transition: all 0.2s;
+        }
+        .upload-box:hover {
+            border-color: #2196f3;
+            background:#f0f7ff;
+        }
+        .upload-box.uploading{
+            cursor:not-allowed;
+            opacity:0.65;
+        }
+        #file-input { display: none; }
+        .task-item {
+            border: 1px solid #e2e8f0;
+            padding: 14px 16px;
+            margin: 10px 0;
+            border-radius: 8px;
+            background:#ffffff;
+            box-shadow: 0 1px 2px #00000008;
+        }
+        .task-header{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+        .task-meta{
+            font-size:12px;
+            color:#777;
+            margin-top:4px;
+        }
+        .status-pending { color: #999; }
+        .status-processing { color: #0066cc; }
+        .status-completed { color: #090; }
+        .status-failed { color: #f33; }
+        .log-box {
+            margin-top:10px;
+            white-space: pre-wrap;
+            font-size:13px;
+            color:#444;
+            background:#f7f8fa;
+            padding:8px;
+            border-radius:4px;
+        }
+        .log-title {
+            cursor:pointer;
+            color:#0066cc;
+            font-size:14px;
+            margin-top:8px;
+        }
+        .log-title:hover{
+            text-decoration: underline;
+        }
+
+        /* toast提示 */
+        #toast{
+            position:fixed;
+            top:20px;
+            right:24px;
+            padding:10px 18px;
+            border-radius:6px;
+            color:#fff;
+            font-size:14px;
+            z-index:9999;
+            display:none;
+        }
+        .toast-success{background:#28a745;}
+        .toast-error{background:#dc3545;}
+    </style>
+</head>
+<body>
+    <h2>知识库文件导入</h2>
+
+    <div class="toolbar">
+        <button class="btn btn-clear" id="clearAllBtn">清空全部任务</button>
+    </div>
+
+    <!-- 上传区域 -->
+    <div class="upload-box" id="uploadArea">
+        <p>点击或拖拽上传 PDF / MD 文件（支持多选）</p>
+        <input type="file" id="file-input" multiple accept=".pdf,.md">
+    </div>
+
+    <!-- 任务列表容器 -->
+    <div id="taskList"></div>
+
+    <!-- 消息弹窗 -->
+    <div id="toast"></div>
+
+    <script>
+        const API_BASE = "http://127.0.0.1:8001";
+        const uploadArea = document.getElementById("uploadArea");
+        const fileInput = document.getElementById("file-input");
+        const taskList = document.getElementById("taskList");
+        const clearAllBtn = document.getElementById("clearAllBtn");
+        const toastDom = document.getElementById("toast");
+
+        // 保存任务定时器map，任务结束清除定时器
+        const taskTimerMap = new Map();
+        let isUploading = false;
+
+        // toast提示组件
+        function showToast(msg, type="success"){
+            toastDom.className = "";
+            toastDom.classList.add(type === "success" ? "toast-success":"toast-error");
+            toastDom.innerText = msg;
+            toastDom.style.display = "block";
+            setTimeout(()=>{
+                toastDom.style.display = "none";
+            },2500);
+        }
+
+        //清空全部任务
+        clearAllBtn.onclick = function(){
+            //清除所有定时器
+            for(const [tid,timer] of taskTimerMap){
+                clearInterval(timer);
+            }
+            taskTimerMap.clear();
+            taskList.innerHTML = "";
+            showToast("已清空任务列表");
+        }
+
+        // 点击上传框触发文件选择
+        uploadArea.onclick = () => {
+            if(isUploading) return;
+            fileInput.click();
+        };
+
+        // 拖拽上传
+        uploadArea.ondragover = e => e.preventDefault();
+        uploadArea.ondrop = e => {
+            e.preventDefault();
+            if(isUploading) return;
+            const files = e.dataTransfer.files;
+            if(files.length) handleUpload(files);
+        };
+
+        // 选择文件后上传
+        fileInput.onchange = () => {
+            if(isUploading) return;
+            if(fileInput.files.length) handleUpload(fileInput.files);
+        };
+
+        // 上传文件到后端 /upload
+        async function handleUpload(files) {
+            isUploading = true;
+            uploadArea.classList.add("uploading");
+            const formData = new FormData();
+            for(let f of files) formData.append("files", f);
+            try{
+                const res = await fetch(`${API_BASE}/upload`, {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await res.json();
+                showToast(`成功提交 ${data.task_ids.length} 个导入任务`);
+                // 为每个task_id开启轮询
+                data.task_ids.forEach(tid => createTaskCard(tid));
+            }catch(err){
+                showToast("上传失败："+err.message,"error");
+            }finally{
+                isUploading = false;
+                uploadArea.classList.remove("uploading");
+                fileInput.value = "";
+            }
+        }
+
+        // 创建单个任务卡片
+        function createTaskCard(taskId) {
+            const now = new Date().toLocaleString();
+            const div = document.createElement("div");
+            div.className = "task-item";
+            div.id = `task-${taskId}`;
+            div.innerHTML = `
+                <div class="task-header">
+                    <div>任务ID：${taskId} <span class="status-pending" id="stat-${taskId}">pending</span></div>
+                </div>
+                <div class="task-meta">提交时间：${now}</div>
+                <div class="log-title" onclick="toggleLog('${taskId}')">日志（点击展开）</div>
+                <div class="log-box" id="log-${taskId}" style="display:none;"></div>
+            `;
+            taskList.appendChild(div);
+            // 每2秒轮询一次状态，保存定时器id
+            const timer = setInterval(() => pollTask(taskId), 2000);
+            taskTimerMap.set(taskId, timer);
+        }
+
+        // 轮询 /status/{task_id}
+        async function pollTask(taskId) {
+            try {
+                const res = await fetch(`${API_BASE}/status/${taskId}`);
+                const info = await res.json();
+                const statSpan = document.getElementById(`stat-${taskId}`);
+                const logBox = document.getElementById(`log-${taskId}`);
+                if(!statSpan) return;
+
+                // 更新状态文字和颜色
+                statSpan.innerText = info.status;
+                statSpan.className = `status-${info.status}`;
+                // 拼接日志
+                let logText = "";
+                if(info.running_list?.length>0) logText += "运行中节点：" + info.running_list.join(", ") + "\n";
+                if(info.done_list?.length>0) logText += "已完成节点：" + info.done_list.join(", ") + "\n";
+                logBox.innerText = logText;
+
+                // 任务完成 /失败，清除定时器，停止轮询
+                if(info.status === "completed" || info.status === "failed"){
+                    const timer = taskTimerMap.get(taskId);
+                    if(timer){
+                        clearInterval(timer);
+                        taskTimerMap.delete(taskId);
+                    }
+                }
+            }catch(err){
+                console.error("轮询任务异常", taskId, err);
+            }
+        }
+
+        // 展开/收起日志
+        function toggleLog(taskId) {
+            const logDom = document.getElementById(`log-${taskId}`);
+            logDom.style.display = logDom.style.display === "none" ? "block" : "none";
+        }
+    </script>
+</body>
+</html>

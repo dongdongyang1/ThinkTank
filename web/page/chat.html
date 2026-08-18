@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识库问答对话</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", system-ui, sans-serif;
+        }
+        body {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: #f5f7fa;
+        }
+        /* 顶栏 Topbar */
+        .topbar {
+            height: 56px;
+            background: #2563eb;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        .status-tag {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+        }
+        .status-idle { background: #6b7280; }
+        .status-connected { background: #10b981; }
+        .status-disconnect { background: #ef4444; }
+        .stream-switch {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .switch-box {
+            width: 40px;
+            height: 20px;
+            background: #ccc;
+            border-radius: 20px;
+            position: relative;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .switch-box.open { background: #10b981; }
+        .switch-dot {
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: 0.2s;
+        }
+        .switch-box.open .switch-dot { left: 22px; }
+        /* 对话区域 Chat */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+        .msg-item {
+            max-width: 70%;
+            margin-bottom: 18px;
+        }
+        .user-msg {
+            margin-left: auto;
+        }
+        .user-bubble {
+            background: #2563eb;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 14px 14px 2px 14px;
+            line-height: 1.6;
+        }
+        .ai-msg {
+            margin-right: auto;
+        }
+        .ai-bubble {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px 14px 14px 2px;
+            padding: 12px 16px;
+        }
+        .answer-text {
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+        /* 进度折叠面板 */
+        .progress-toggle {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #2563eb;
+            cursor: pointer;
+        }
+        .progress-panel {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: #f3f4f6;
+            border-radius: 6px;
+            font-size: 13px;
+            display: none;
+        }
+        .progress-panel.show { display: block; }
+        /* 输入区域 Composer */
+        .composer {
+            padding: 16px 24px;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+        #input-text {
+            flex: 1;
+            min-height: 48px;
+            max-height: 140px;
+            padding: 12px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            resize: none;
+            font-size: 15px;
+            outline: none;
+        }
+        #input-text:focus { border-color: #2563eb; }
+        #send-btn {
+            height: 48px;
+            padding: 0 22px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        #send-btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶栏 Topbar -->
+    <div class="topbar">
+        <div>
+            <span>知识库问答</span>
+            <span class="status-tag status-idle" id="conn-status">未连接</span>
+        </div>
+        <div class="stream-switch">
+            <span>流式输出</span>
+            <div class="switch-box" id="stream-switch">
+                <div class="switch-dot"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 对话区域 Chat -->
+    <div class="chat-container" id="chat-box"></div>
+
+    <!-- 输入区域 Composer -->
+    <div class="composer">
+        <textarea id="input-text" placeholder="请输入你的问题..." rows="2"></textarea>
+        <button id="send-btn" disabled>发送</button>
+    </div>
+
+    <script>
+        // 后端基础地址（后端端口8002）
+        const API_BASE = "http://127.0.0.1:8002";
+        // 全局变量
+        let sessionId = localStorage.getItem("chat_session_id") || "";
+        let eventSource = null;
+        let streamMode = true; // 默认开启流式
+        let currentAiWrap = null; // 当前AI外层容器
+        let progressDom = null; // 当前进度面板
+
+        // DOM元素
+        const connStatusDom = document.getElementById("conn-status");
+        const streamSwitchDom = document.getElementById("stream-switch");
+        const chatBoxDom = document.getElementById("chat-box");
+        const inputDom = document.getElementById("input-text");
+        const sendBtnDom = document.getElementById("send-btn");
+
+        // 页面初始化
+        initPage();
+
+        function initPage() {
+            // 切换流式开关
+            streamSwitchDom.addEventListener("click", () => {
+                streamMode = !streamMode;
+                streamSwitchDom.classList.toggle("open", streamMode);
+            })
+            streamSwitchDom.classList.toggle("open", streamMode);
+
+            // 有会话ID则启用发送按钮
+            if (sessionId) sendBtnDom.disabled = false;
+
+            // 发送按钮点击
+            sendBtnDom.addEventListener("click", sendQuestion);
+            // Enter发送，Shift+Enter换行
+            inputDom.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendQuestion();
+                }
+            })
+        }
+
+        // 发送提问：POST /query
+        async function sendQuestion() {
+            const queryText = inputDom.value.trim();
+            if (!queryText) return;
+            inputDom.value = "";
+            sendBtnDom.disabled = true;
+
+            // 1. 渲染用户气泡
+            addUserMsg(queryText);
+
+            // 2. 构造请求体
+            const reqData = {
+                query: queryText,
+                session_id: sessionId || null,
+                is_stream: streamMode
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/query`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(reqData)
+                })
+                const data = await res.json();
+                sessionId = data.session_id;
+                localStorage.setItem("chat_session_id", sessionId);
+                sendBtnDom.disabled = false;
+
+                // 3. 创建AI气泡容器
+                createAiWrap();
+
+                // 4. 流式模式建立SSE长连接
+                if (streamMode) {
+                    createSSEConnection();
+                } else {
+                    // 非流式直接展示完整答案
+                    if(!currentAiWrap) return;
+                    const answerDom = currentAiWrap.querySelector(".answer-text");
+                    if(answerDom){
+                        answerDom.innerText = data.answer;
+                    }
+                    if(progressDom){
+                        progressDom.innerHTML = `已完成节点：${data.done_list.join(", ")}`;
+                        progressDom.classList.add("show");
+                    }
+                    // 非流式渲染图片
+                    if(Array.isArray(data.image_urls) && data.image_urls.length>0 && answerDom){
+                        for(let imgUrl of data.image_urls){
+                            const imgEl = document.createElement("img");
+                            imgEl.src = imgUrl;
+                            imgEl.style.maxWidth = "100%";
+                            imgEl.style.marginTop = "8px";
+                            imgEl.style.borderRadius = "6px";
+                            answerDom.appendChild(document.createElement("br"));
+                            answerDom.appendChild(imgEl);
+                        }
+                    }
+                }
+            } catch (err) {
+                addAiMsg("请求失败：" + err.message, true);
+                sendBtnDom.disabled = false;
+            }
+        }
+
+        // 创建SSE长连接 /stream/{session_id}
+        function createSSEConnection() {
+            closeSSE();
+            connStatusDom.className = "status-tag status-idle";
+            connStatusDom.innerText = "连接中...";
+
+            eventSource = new EventSource(`${API_BASE}/stream/${sessionId}`);
+
+            // 连接成功
+            eventSource.onopen = () => {
+                connStatusDom.className = "status-tag status-connected";
+                connStatusDom.innerText = "已连接";
+            }
+
+            // 接收自定义事件 progress / delta / final / error
+            eventSource.addEventListener("progress", (e) => {
+                const data = JSON.parse(e.data);
+                const run = data.running_list || [];
+                const done = data.done_list || [];
+                let text = "";
+                if (run.length) text += `运行节点：${run.join(", ")}\n`;
+                if (done.length) text += `完成节点：${done.join(", ")}`;
+                if(progressDom) progressDom.innerText = text;
+            })
+
+            eventSource.addEventListener("delta", (e) => {
+                const data = JSON.parse(e.data);
+                if(!currentAiWrap) return;
+                const answerDom = currentAiWrap.querySelector(".answer-text");
+                if(!answerDom) return;
+                answerDom.innerText += data.text;
+            })
+
+            eventSource.addEventListener("final", (e) => {
+                const data = JSON.parse(e.data);
+                if(!currentAiWrap) return;
+                const answerDom = currentAiWrap.querySelector(".answer-text");
+                if(!answerDom) return;
+
+                answerDom.innerText = data.answer;
+                // 渲染图片
+                if(Array.isArray(data.image_urls) && data.image_urls.length>0){
+                    for(let imgUrl of data.image_urls){
+                        const imgEl = document.createElement("img");
+                        imgEl.src = imgUrl;
+                        imgEl.style.maxWidth = "100%";
+                        imgEl.style.marginTop = "8px";
+                        imgEl.style.borderRadius = "6px";
+                        answerDom.appendChild(document.createElement("br"));
+                        answerDom.appendChild(imgEl);
+                    }
+                }
+                closeSSE();
+            })
+
+            eventSource.addEventListener("error", (e) => {
+                const data = JSON.parse(e.data);
+                if(!currentAiWrap) return;
+                const answerDom = currentAiWrap.querySelector(".answer-text");
+                if(!answerDom) return;
+                answerDom.innerText += `\n【错误】${data.error}`;
+                currentAiWrap.style.color = "#ef4444";
+                closeSSE();
+            })
+
+            // 连接断开
+            eventSource.onerror = () => {
+                connStatusDom.className = "status-tag status-disconnect";
+                connStatusDom.innerText = "连接断开";
+                closeSSE();
+            }
+        }
+
+        // 关闭SSE连接
+        function closeSSE() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+        }
+
+        // 添加用户消息气泡
+        function addUserMsg(text) {
+            const wrap = document.createElement("div");
+            wrap.className = "msg-item user-msg";
+            wrap.innerHTML = `<div class="user-bubble">${text}</div>`;
+            chatBoxDom.appendChild(wrap);
+            scrollBottom();
+        }
+
+        // 创建AI回答容器（带进度折叠面板）
+        function createAiWrap() {
+            const wrap = document.createElement("div");
+            wrap.className = "msg-item ai-msg";
+            wrap.innerHTML = `
+                <div class="ai-bubble">
+                    <div class="answer-text"></div>
+                    <div class="progress-toggle" onclick="toggleProgress(this)">查看执行进度</div>
+                    <div class="progress-panel"></div>
+                </div>
+            `;
+            chatBoxDom.appendChild(wrap);
+            currentAiWrap = wrap;
+            progressDom = wrap.querySelector(".progress-panel");
+            scrollBottom();
+        }
+
+        // 切换进度面板显示隐藏
+        window.toggleProgress = function(el) {
+            const panel = el.nextElementSibling;
+            panel.classList.toggle("show");
+        }
+
+        // 备用错误提示
+        function addAiMsg(text, isError){
+            const wrap = document.createElement("div");
+            wrap.className = "msg-item ai-msg";
+            wrap.innerHTML = `
+                <div class="ai-bubble">
+                    <div class="answer-text" ${isError?'style="color:red"':''}>${text}</div>
+                </div>
+            `;
+            chatBoxDom.appendChild(wrap);
+            scrollBottom();
+        }
+
+        // 滚动到底部
+        function scrollBottom() {
+            chatBoxDom.scrollTop = chatBoxDom.scrollHeight;
+        }
+    </script>
+</body>
+</html>
