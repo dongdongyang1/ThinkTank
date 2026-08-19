@@ -1,17 +1,15 @@
-import os
+"""MCP配置（兼容层：从统一settings读取）"""
 from dataclasses import dataclass
+from config.settings import settings
 
-from dotenv import load_dotenv
-
-load_dotenv()
 
 @dataclass
 class McpConfig:
-    mcp_base_url : str
-    api_key : str
+    mcp_base_url: str
+    api_key: str
 
 
 mcp_config = McpConfig(
-    mcp_base_url=os.getenv("MCP_DASHSCOPE_BASE_URL"),
-    api_key=os.getenv("OPENAI_API_KEY")
+    mcp_base_url=settings.mcp_base_url,
+    api_key=settings.llm_api_key,  # MCP与LLM共用OPENAI_API_KEY
 )

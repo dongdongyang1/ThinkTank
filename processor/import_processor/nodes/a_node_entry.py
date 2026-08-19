@@ -41,7 +41,7 @@ class NodeEntry(BaseNode):
 
 
         # 3. 检查文件后缀
-        file_suffix = import_file_path_obj.suffix
+        file_suffix = import_file_path_obj.suffix.lower()
         if file_suffix == ".pdf":
             state["is_pdf_read_enabled"] = True
             state["pdf_path"] = import_file_path

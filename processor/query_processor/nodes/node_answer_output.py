@@ -202,13 +202,13 @@ class NodeAnswerOutput(NodeBase):
                     if delta:
                         final_text +=delta
                         # 将增量内容放入队列
-                        push_to_session(session_id,SSEEvent.DELTA,{"delta":delta})
+                        push_to_session_nowait(session_id,SSEEvent.DELTA,{"delta":delta})
                 logger.info(f"流式输出完成，总长度: {len(final_text)}")
 
             except Exception as e:
                 logger.error(f"流式生成出错: {e}", exc_info=True)
                 # 发生错误时，尝试推送到前端
-                push_to_session(session_id, SSEEvent.ERROR, {"error": str(e)})
+                push_to_session_nowait(session_id, SSEEvent.ERROR, {"error": str(e)})
 
             state["answer"] = final_text
         else:
@@ -222,9 +222,8 @@ class NodeAnswerOutput(NodeBase):
                 logger.info(f"生成回答完成，长度: {len(content)}")
             except Exception as e:
                 if not prompt:
-                    logger.error("prompt 为空，跳过 LLM 调用")
+                    logger.error(f"LLM 生成失败: {e}", exc_info=True)
                     state["answer"] = ""
-                    return state
 
         return state
 

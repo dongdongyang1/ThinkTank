@@ -2,7 +2,6 @@ import json
 from typing import Tuple, List, Dict
 
 from langchain_core.messages import SystemMessage, HumanMessage
-from langchain_openai import ChatOpenAI
 
 from config.lm_config import lm_config
 from config.milvus_config import milvus_config
@@ -13,6 +12,7 @@ from processor.import_processor.nodes.prompt.item_name_recognition import ITEM_N
 from processor.query_processor.state import QueryGraphState
 from utils.embedding_utils import generate_embeddings
 from utils.json_format_utils import format_json
+from utils.llm_utils import get_llm_client
 from utils.milvus_utils import get_milvus_client, create_hybrid_search_requests, hybrid_search
 from utils.mongo_history_utils import get_recent_messages, save_chat_messages, update_message_item_names
 
@@ -100,16 +100,7 @@ class NodeItemNameConfirm(NodeBase):
     """
         try:
             # 1. 获取llm客户端
-            chat_model = ChatOpenAI(
-                model = lm_config.item_model,
-                api_key = lm_config.api_key,
-                base_url = lm_config.base_url,
-                temperature = lm_config.llm_temperature,
-                # 开启JSON标准输出模式，强制模型返回可解析的json_object
-                model_kwargs={
-                    "response_format":{"type":"json_object"}
-                }
-            )
+            chat_model = get_llm_client(model=lm_config.item_model, json_mode=True)
 
             # 2. 构造历史对话文本，拼接为”角色：内容“的格式，供上下文理解
             history_text = ""

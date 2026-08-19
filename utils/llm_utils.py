@@ -28,7 +28,10 @@ def get_llm_client(model : str | None = None,json_mode : bool = False)->ChatOpen
         api_key = lm_config.api_key,
         base_url = lm_config.base_url,
         extra_body = extra_body,
-        model_kwargs = model_kwargs
+        model_kwargs = model_kwargs,
+        timeout=60,  # 单次请求超时60秒
+        max_retries=2,  # 失败自动重试2次
+
     )
     _llm_client_cache[key]=client
     return client

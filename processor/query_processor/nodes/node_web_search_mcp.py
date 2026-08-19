@@ -25,7 +25,12 @@ class NodeWebSearchMcp(NodeBase):
         # 如果没有查询内容，直接返回
         if query:
             #asyncio.run专门用来启动、运行异步协程
-            result = asyncio.run(self._mcp_call(query))
+            loop = asyncio.new_event_loop()
+            try:
+                result = loop.run_until_complete(self._mcp_call(query))
+            finally:
+                loop.close()
+
             if result:
                 logger.info(f"MCP原始返回result:{result}")
                 text = result.content[0].text

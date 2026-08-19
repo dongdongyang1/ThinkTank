@@ -52,6 +52,18 @@ class KBImportWorkflow:
         else:
             return END
 
+    @staticmethod
+    def route_after_pdf_parse(state:ImportGraphState)->str:
+        """
+        PDF解析节点后的条件路由函数
+        解析失败则直接结束，避免后续节点因md_path为空连锁报错
+        :param state: 当前状态
+        :return: 下一个节点名称
+        """
+        if state.get("pdf_parse_error"):
+            return END
+        return "c_node_md_img"
+
 
     def build_graph(self):
         """
@@ -87,7 +99,15 @@ class KBImportWorkflow:
 
 
         # 5. 注册工作流
-        graph.add_edge("b_node_pdf_to_md","c_node_md_img")
+        # PDF解析后条件路由：失败直接结束，成功才进图片处理
+        graph.add_conditional_edges(
+            "b_node_pdf_to_md",
+            self.route_after_pdf_parse,
+            {
+                "c_node_md_img": "c_node_md_img",
+                END: END
+            }
+        )
         graph.add_edge("c_node_md_img","d_node_document_split")
         graph.add_edge("d_node_document_split","e_node_item_name_recognition")
         graph.add_edge("e_node_item_name_recognition","f_node_bge_embedding")
@@ -109,7 +129,7 @@ class KBImportWorkflow:
 
         if stream:
             #return self.graph.stream(state,stream_mode="values")
-            return self.graph.stream(state)
+            return self.graph.stream(state,stream_mode="updates")
         else:
             return self.graph.invoke(state)
 

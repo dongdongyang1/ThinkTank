@@ -29,6 +29,9 @@ class NodeBGEEmbedding(BaseNode):
         :param state: 工作流状态对象
         :return: 更新后的状态对象
         """
+        if state.get("pdf_parse_error"):
+            self.logger.warning(f"跳过本节点，PDF解析失败:{state['pdf_parse_error']}")
+            return state
 
         # 1. 输入数据校验
         chunks = self._step_1_validate_input(state)

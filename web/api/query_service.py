@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import FileResponse
 
+from processor.query_processor.logger import logger
 from processor.query_processor.main_graph import KBQueryWorkflow
 from utils.mongo_history_utils import clear_history, get_recent_messages
 from utils.sse_utils import SSEEvent, create_sse_stream
@@ -77,21 +78,21 @@ async def query(background_tasks:BackgroundTasks,request:QueryRequest):
     # 更新任务状态
     # 当前会话id作为key! 整体装填处于运行中！
     update_task_status(session_id,TASK_STATUS_PROCESSING,is_stream)
-    print("开始处理流程... 是否流式:", is_stream, f"其他参数:{user_query}, session_id:{session_id}")
+    logger.info("开始处理流程... 是否流式:", is_stream, f"其他参数:{user_query}, session_id:{session_id}")
 
     if is_stream:
         # 如果是流式，则返回一个流式响应，过程不断地推送
         # 运行执行图对象方法
         background_tasks.add_task(run_query_graph,session_id,user_query,is_stream)
         # 返回结果
-        print("开始处理结果....")
+        logger.info("开始处理结果....")
         return {
             "message":"结果正在处理中...",
             "session_id":session_id
         }
     else:
         # 同步运行：用 to_thread 避免阻塞事件循环
-        # （node_web_search_mcp 内部有 asyncio.run，不能直接在 loop 线程里执行）
+        # （node_web_search_mcp 内部有显式使用独立 loop 以自文档化，不能直接在 loop 线程里执行）
         await asyncio.to_thread(run_query_graph, session_id, user_query, is_stream)
         answer = get_task_result(session_id, "answer", "")
         return {
@@ -102,9 +103,17 @@ async def query(background_tasks:BackgroundTasks,request:QueryRequest):
         }
 
 
+_workflow = None
+def get_workflow() -> KBQueryWorkflow:
+    global _workflow
+    if _workflow is None:
+        _workflow = KBQueryWorkflow()
+    return _workflow
+
+
 # 定义查询接口
 def run_query_graph(session_id:str,user_query:str,is_stream:bool=False):
-    print(f"开始流程图处理...{session_id} {user_query} {is_stream}")
+    logger.info(f"开始流程图处理...{session_id} {user_query} {is_stream}")
     init_state = {
         "original_query":user_query,
         "session_id":session_id,
@@ -112,7 +121,7 @@ def run_query_graph(session_id:str,user_query:str,is_stream:bool=False):
     }
 
     try:
-        workflow = KBQueryWorkflow()
+        workflow = get_workflow()
         if is_stream:
             # langgraph 的 stream() 是惰性生成器，必须迭代才会真正执行图
             final_state = {}
@@ -128,8 +137,6 @@ def run_query_graph(session_id:str,user_query:str,is_stream:bool=False):
                     })
             answer = final_state.get("answer", "") if isinstance(final_state, dict) else ""
             update_task_status(session_id, TASK_STATUS_COMPLETED, is_stream)
-            # 前端收到 final 事件后主动 closeSSE（chat.html:296-300）
-            push_to_session_nowait(session_id, SSEEvent.FINAL, {"answer": answer})
         else:
             final_state = workflow.run(init_state, stream=False)
             update_task_status(session_id, TASK_STATUS_COMPLETED, is_stream)
@@ -137,7 +144,7 @@ def run_query_graph(session_id:str,user_query:str,is_stream:bool=False):
             set_task_result(session_id, "answer", final_state.get("answer", ""))
 
     except Exception as e:
-        print(f"流程执行异常: {e}")
+        logger.info(f"流程执行异常: {e}")
         update_task_status(session_id, TASK_STATUS_FAILED, is_stream)
 
         if is_stream:
@@ -159,7 +166,7 @@ async def clear_chat_history(session_id:str):
     """
     清空指定会话的历史记录
     """
-    count = clear_history(session_id)
+    count = await asyncio.to_thread(clear_history,session_id)
     return {"message": "历史会话已清空", "deleted_count": count}
 
 
@@ -169,7 +176,7 @@ async def history(session_id:str,limit:int = 50):
     查询当前会话历史记录
     """
     try:
-        records = get_recent_messages(session_id,limit=limit)
+        records = await asyncio.to_thread(get_recent_messages,session_id,limit=limit)
         items = []
         for r in records:
             items.append({

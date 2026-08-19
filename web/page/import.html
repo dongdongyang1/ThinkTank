@@ -243,10 +243,12 @@
                 statSpan.innerText = info.status;
                 statSpan.className = `status-${info.status}`;
                 // 拼接日志
-                let logText = "";
-                if(info.running_list?.length>0) logText += "运行中节点：" + info.running_list.join(", ") + "\n";
-                if(info.done_list?.length>0) logText += "已完成节点：" + info.done_list.join(", ") + "\n";
-                logBox.innerText = logText;
+                 let logText = "";
+                 if(info.running_list?.length>0) logText += "运行中节点：" + info.running_list.join(", ") + "\n";
+                 if(info.done_list?.length>0) logText += "已完成节点：" + info.done_list.join(", ") + "\n";
+                 if(info.progress) logText += "当前进度：" + info.progress + "\n";
+                 logBox.innerText = logText;
+                  if(info.create_time>0) logText += "已运行：" + Math.max(0, Math.round((Date.now()/1000 - info.create_time)/60)) + " 分钟\n";
 
                 // 任务完成 /失败，清除定时器，停止轮询
                 if(info.status === "completed" || info.status === "failed"){

@@ -2,7 +2,8 @@ import json
 from fastapi import Request
 from fastapi.responses import StreamingResponse
 from enum import StrEnum
-from utils.task_utils import get_sse_queue, END_SIGNAL
+from utils.task_utils import get_sse_queue, END_SIGNAL, clear_sse_queue, cleanup_task_record
+
 
 # SSE事件类型枚举，和文档完全对应
 class SSEEvent(StrEnum):
@@ -33,6 +34,9 @@ async def sse_generator(session_id: str, request: Request):
     except Exception as e:
         err_data = json.dumps({"error": str(e)}, ensure_ascii=False)
         yield f"event: {SSEEvent.ERROR}\ndata: {err_data}\n\n"
+    finally:
+        await clear_sse_queue(session_id)
+        cleanup_task_record(session_id)
 
 def create_sse_stream(session_id: str, request: Request) -> StreamingResponse:
     """快速构造SSE流式响应"""

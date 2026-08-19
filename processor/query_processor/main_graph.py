@@ -116,8 +116,8 @@ class KBQueryWorkflow:
         """"""
         if not self._compiled_app:
             self.compile()
+            self._compiled_app.get_graph().print_ascii()
 
-        self._compiled_app.get_graph().print_ascii()
 
         if stream:
             return self._compiled_app.stream(initial_state)
@@ -134,6 +134,6 @@ if __name__ == "__main__":
         logger.warning(chunk)
 
     # 打印编译后的图结构
-    logger.info(workflow.compile().get_graph().draw_ascii())
+    #logger.info(workflow.compile().get_graph().draw_ascii())
 
 

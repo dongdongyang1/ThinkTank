@@ -12,7 +12,7 @@ from typing import TypedDict, List
 
 import copy
 
-from processor.import_processor.import_config import get_config
+from processor.import_processor.import_config import get_config, get_file_dir
 
 
 class ImportGraphState(TypedDict, total=False):
@@ -60,6 +60,8 @@ class ImportGraphState(TypedDict, total=False):
 
     chunks: List  # 文档切片列表
 
+    pdf_parse_error: str  # PDF解析失败信息，非空表示解析失败，后续节点应跳过
+
     # ==================== 默认状态 ====================
 
 
@@ -90,6 +92,8 @@ GRAPH_DEFAULT_STATE: ImportGraphState = {
 
     "item_name": "",
 
+    "pdf_parse_error": None,
+
 
 }
 
@@ -109,8 +113,7 @@ def create_default_state(**overrides) -> ImportGraphState:
     """
     state = copy.deepcopy(GRAPH_DEFAULT_STATE)
     # 从全局配置读取file_dir填充默认目录
-    cfg = get_config()
-    state["file_dir"] = cfg.file_dir
+    state["file_dir"] =  get_file_dir()
     state.update(overrides)
     return state
 

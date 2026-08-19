@@ -1,18 +1,15 @@
-import os
+"""MinerU配置（兼容层：从统一settings读取）"""
 from dataclasses import dataclass
-from dotenv import load_dotenv
+from config.settings import settings
 
-load_dotenv()
 
 @dataclass
 class MineruConfig:
-    api_token : str
-    base_url : str
+    api_token: str
+    base_url: str
+
 
 mineru_config = MineruConfig(
-    api_token = os.getenv("MINERU_API_TOKEN", ""),
-    base_url = os.getenv("MINERU_BASE_URL", "")
+    api_token=settings.mineru_api_token,
+    base_url=settings.mineru_base_url,
 )
-
-
-

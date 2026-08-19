@@ -1,20 +1,21 @@
-import os
+"""MinIO配置（兼容层：从统一settings读取）"""
 from dataclasses import dataclass
-from dotenv import load_dotenv
+from config.settings import settings
 
-load_dotenv()
+
 @dataclass
 class MinIOConfig:
-    endpoint : str
-    access_key : str
-    secret_key : str
-    bucket_name : str
-    img_dir : str
+    endpoint: str
+    access_key: str
+    secret_key: str
+    bucket_name: str
+    img_dir: str
+
 
 minio_config = MinIOConfig(
-    endpoint=os.getenv("MINIO_ENDPOINT"),
-    access_key=os.getenv("MINIO_ACCESS_KEY"),
-    secret_key=os.getenv("MINIO_SECRET_KEY"),
-    bucket_name=os.getenv("MINIO_BUCKET_NAME"),
-    img_dir=os.getenv("MINIO_IMG_DIR")
+    endpoint=settings.minio_endpoint,
+    access_key=settings.minio_access_key,
+    secret_key=settings.minio_secret_key,
+    bucket_name=settings.minio_bucket_name,
+    img_dir=settings.minio_img_dir,
 )

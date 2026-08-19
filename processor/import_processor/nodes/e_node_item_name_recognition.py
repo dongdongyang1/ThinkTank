@@ -13,7 +13,9 @@ from processor.import_processor.exceptions import StateFieldError
 from processor.import_processor.state import ImportGraphState
 from processor.import_processor.nodes.prompt.item_name_recognition import ITEM_NAME_USER_PROMPT_TEMPLATE, \
     ITEM_NAME_SYSTEM_PROMPT
+from services.milvus_service import MilvusService
 from utils.embedding_utils import generate_embeddings
+from utils.llm_utils import get_llm_client
 from utils.milvus_utils import get_milvus_client,escape_milvus_string
 
 
@@ -41,6 +43,11 @@ class NodeItemNameRecognition(BaseNode):
         :param state: 工作流状态对象
         :return: 更新后的状态对象
         """
+        # PDF解析失败则跳过本节点
+        if state.get("pdf_parse_error"):
+            self.logger.warning(f"跳过本节点，PDF解析失败:{state['pdf_parse_error']}")
+            return state
+
         # 1. 提取并校验输入
         file_title ,chunks = self._step_1_get_inputs(state)
 
@@ -144,7 +151,6 @@ class NodeItemNameRecognition(BaseNode):
         返回值：
             str: 清洗后的商品名称（异常/空值时返回原始file_title）
         """
-
         # 1. 上下文为空，返回file_title
         if not context:
             return file_title
@@ -155,13 +161,7 @@ class NodeItemNameRecognition(BaseNode):
             )
 
             # 3. 初始化大模型客户端
-            llm = ChatOpenAI(
-                model = lm_config.llm_model,
-                api_key = lm_config.api_key,
-                base_url = lm_config.base_url,
-                temperature = lm_config.llm_temperature,
-                extra_body = {"enable_thinking":False}
-            )
+            llm = get_llm_client()
 
             # 4. 创建消息对象
             messages = [
@@ -255,48 +255,34 @@ class NodeItemNameRecognition(BaseNode):
         try:
             # 1. 获取 Milvus 单例客户端，连接失败则直接返回
             # milvus_client = MilvusClient(uri=milvus_uri)
-            milvus_client = get_milvus_client()
-            if not milvus_client:
-                self.logger.warning("无法获取 Milvus 客户端（连接失败），跳过数据保存")
-
+            service = MilvusService()
+            if not service.is_connected:
+                self.logger.warning("Milvus连接失败，跳过数据保存")
                 return
 
-            # 2. 创建集合（如果不存在）
+            # 2. 集合不存在则创建
             collection_name = milvus_config.item_name_collection
-            if not milvus_client.has_collection(collection_name):
-                self._create_item_name_collection(collection_name,milvus_client)
+            service.ensure_collection(
+                collection_name,
+                lambda: self._create_item_name_collection(collection_name, service.client)
+            )
 
-            # 3. 幂等性处理：删除同名商品数据（避免重复存储）
-            # 转义商品名称（防止特殊字符导致filter解析失败）
-            safe_item_name = escape_milvus_string(item_name)
+            # 3. 幂等清理同名商品
+            service.delete_by_field_value(collection_name, "item_name", item_name)
 
-            # 构建过滤表达式：item_name等于目标值
-            filter_expr = f"item_name == '{safe_item_name}'"
-
-            # 删除符合条件的数据
-            milvus_client.delete(collection_name=collection_name,filter=filter_expr)
-
-            # 4. 准备插入Milvus的数据
+            # 4. 准备插入数据
             data = {
                 "file_title":file_title,
                 "item_name":item_name
             }
-
-            #稠密向量非空则添加
             if dense_vector is not None:
                 data["dense_vector"] = dense_vector
-
-            #稀疏向量非空则添加
             if sparse_vector is not None:
                 data["sparse_vector"] = sparse_vector
 
-            # 5. 插入数据（传入列表支持批量插入，这里仅1条）
-            milvus_client.insert(collection_name=collection_name,data=[data])
+            # 5. 插入数据
+            service.insert_batch(collection_name, [data])
 
-            # 6. 把商品名称存入state（供下游节点使用）
-            #state[item_name]=item_name
-
-            # 捕获所有Milvus操作异常：连接中断、入库失败、索引错误等，不中断主流程
         except Exception as e:
             self.logger.warning(f"数据存入Milvus失败，原因：{str(e)}", exc_info=True)
 
@@ -327,11 +313,11 @@ class NodeItemNameRecognition(BaseNode):
             max_length=100
         )
 
-        # 添加稠密向量字段（FLOAT_VECTOR类型，1024维，BGE-M3模型固定维度）
+        # 添加稠密向量字段（FLOAT_VECTOR类型，BGE-M3模型维度从配置读取）
         schema.add_field(
             field_name="dense_vector",
             datatype=DataType.FLOAT_VECTOR,
-            dim = 1024
+            dim = self.config.embedding_dim
         )
 
         # 添加稀疏向量字段（SPARSE_FLOAT_VECTOR类型，变长，适配BGE-M3的稀疏向量）

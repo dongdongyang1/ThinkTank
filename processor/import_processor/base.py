@@ -7,10 +7,13 @@
 from abc import ABC, abstractmethod
 from typing import TypeVar, Optional
 import logging
+import logging.handlers
+import os
+from pathlib import Path
 
 from processor.import_processor.import_config import ImportConfig, get_config
 from processor.import_processor.exceptions import ImportProcessError
-from utils.task_utils import add_running_task, add_done_task
+from utils.task_utils import add_running_task, add_done_task, remove_running_task
 
 T = TypeVar("T")  # 泛型状态类型
 
@@ -78,6 +81,10 @@ class BaseNode(ABC):
             return result
         except Exception as e:
             self.logger.error(f"{self.name} 执行失败: {e}",exc_info=True)
+            # 失败时从"运行中节点"列表移除，避免前端在failed状态下仍显示该节点运行中
+            task_id = state.get("task_id")
+            if task_id:
+                remove_running_task(task_id, self.name)
             raise ImportProcessError(
                 message=str(e),
                 node_name=self.name,
@@ -116,16 +123,39 @@ class BaseNode(ABC):
 # 配置日志格式
 def setup_logging(level: int = logging.INFO):
     """
-    配置导入流程日志
+    配置导入流程日志：控制台输出 + 滚动文件持久化
 
     Args:
         level: 日志级别
     """
-    logging.basicConfig(
-        level=level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+    log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    formatter = logging.Formatter(log_format, datefmt='%Y-%m-%d %H:%M:%S')
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
+
+    # 避免重复添加handler（多次调用setup_logging时）
+    if root_logger.handlers:
+        return
+
+    # 1. 控制台输出
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    root_logger.addHandler(console_handler)
+
+    # 2. 文件持久化（按大小滚动，单文件10MB，保留5个备份）
+    log_dir = os.getenv("LOG_DIR", str(Path(__file__).resolve().parent.parent.parent / "logs"))
+    Path(log_dir).mkdir(parents=True, exist_ok=True)
+    log_file = Path(log_dir) / "import_processor.log"
+
+    file_handler = logging.handlers.RotatingFileHandler(
+        log_file,
+        maxBytes=10 * 1024 * 1024,  # 10MB
+        backupCount=5,
+        encoding='utf-8'
     )
+    file_handler.setFormatter(formatter)
+    root_logger.addHandler(file_handler)
 
 
 

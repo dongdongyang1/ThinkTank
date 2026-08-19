@@ -84,6 +84,10 @@ class ImportConfig:
     # ==================== 速率限制 ====================
     requests_per_minute: int = 15  # 图片总结 API 速率限制
 
+    # ==================== MinerU 配置 ====================
+    mineru_timeout_seconds: int = 1200  # MinerU单文件解析最大等待时间（秒）
+    mineru_max_pages: int = 200  # MinerU单文件页数上限，超过自动切分
+
 
 
     @classmethod
