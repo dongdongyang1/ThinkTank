@@ -41,7 +41,10 @@ class NodePDFToMD(BaseNode):
                 compressed_pdf_path = pre_compress_pdf_large_image(pdf_path_obj)
                 self.logger.info(f"完成PDF图片预处理：{compressed_pdf_path}")
                 set_task_result(state["task_id"], "node_progress", "正在上传MinerU解析...")
-                md_path = self.mineru.parse_pdf_to_md(compressed_pdf_path, output_dir_obj, state["task_id"])
+                md_path = self.mineru.parse_pdf_to_md(
+                    compressed_pdf_path, output_dir_obj, state["task_id"],
+                    output_stem=pdf_path_obj.stem  # 用原始PDF文件名，不用压缩后的临时名
+                )
 
             with open(md_path, "r", encoding="utf-8") as f:
                 md_content = f.read()
@@ -50,7 +53,7 @@ class NodePDFToMD(BaseNode):
             state["md_content"] = md_content
             state["pdf_parse_error"] = None
 
-        except (PdfConversionError, TimeoutError, StateFieldError, FileProcessingError, RuntimeError) as e:
+        except (PdfConversionError, TimeoutError, StateFieldError, FileProcessingError, RuntimeError, FileNotFoundError) as e:
             err_msg = f"PDF解析失败：{str(e)}"
             self.logger.error(err_msg, exc_info=True)
             state["pdf_parse_error"] = err_msg
@@ -74,7 +77,10 @@ class NodePDFToMD(BaseNode):
                 set_task_result(task_id, "node_progress", f"解析分片{idx}/{len(part_paths)}：{part_path.name}")
 
                 compressed_path = pre_compress_pdf_large_image(part_path)
-                part_md_path = self.mineru.parse_pdf_to_md(compressed_path, output_dir_obj, task_id)
+                part_md_path = self.mineru.parse_pdf_to_md(
+                    compressed_path, output_dir_obj, task_id,
+                    output_stem=part_stem  # 分片名：{pdf_stem}_part{idx}
+                )
                 part_md_paths.append(Path(part_md_path))
 
             final_md_path = merge_parts(part_md_paths, output_dir_obj, pdf_stem)
@@ -90,7 +96,7 @@ class NodePDFToMD(BaseNode):
         """校验PDF路径和输出目录"""
         pdf_path = state.get("pdf_path")
         if not pdf_path:
-            raise StateFieldError(field_name="pdf_name", expected_type=str)
+            raise StateFieldError(field_name="pdf_path", expected_type=str)
 
         file_dir = state.get("file_dir")
         if not file_dir:
