@@ -52,6 +52,10 @@ class NodeAnswerOutput(NodeBase):
         # 提取图片URL（用于历史记录和前端展示）
         image_urls = self._extract_images_from_docs(state.get("reranked_docs") or [])
 
+        # 非流式模式下，把image_urls存入task_result，供/query接口返回
+        if not state.get("is_stream"):
+            set_task_result(state["session_id"], "image_urls", image_urls)
+
         # 阶段四：把答案写入到mongodb的history中
         if state.get("answer"):
             logger.info("---写入MongoDB历史记录---")
@@ -247,7 +251,7 @@ class NodeAnswerOutput(NodeBase):
         if not docs:
             return []
 
-        md_img_pattern = re.compile(r'!\[.*?\]\((.*?)\)')
+        md_img_pattern = re.compile(r'!\[.*?\]\((.*?\.(?:jpg|jpeg|png|gif|webp|bmp|svg))\)', re.IGNORECASE)
         logger.info(f"开始提取图片，待处理文档数: {len(docs)}")
         for i,doc in enumerate(docs):
             # 1. 优先检查 url 字段 (主要针对 Web Search 结果)

@@ -52,6 +52,10 @@ class NodeItemNameConfirm(NodeBase):
         extract_res = self._step_4_extract_info(original_query,history)
         item_names = extract_res.get("item_names")
         rewritten_query = extract_res.get("rewritten_query",original_query)
+
+        # 4.5 规则匹配兜底：LLM 漏了的商品名用关键词补（针对大象系列等不常见名称）
+        item_names = self._rule_based_item_name_fallback(original_query, item_names)
+
         # 更新状态
         state["rewritten_query"] = rewritten_query
         state["item_names"] = item_names
@@ -157,6 +161,91 @@ class NodeItemNameConfirm(NodeBase):
             logger.error(f"大模型调用异常：{str(e)}")
             # 异常时返回默认结果：空商品名列表+原始查询
             return {"item_names": [], "rewritten_query": query}
+
+    def _rule_based_item_name_fallback(self, query: str, item_names: List[str]) -> List[str]:
+        """
+        规则匹配兜底：LLM 提取商品名后，用关键词匹配补充漏掉的商品名。
+        从 kb_item_names 集合加载所有商品名，对每个商品名提取核心关键词，
+        如果问题中包含关键词且 item_names 里没有对应商品名，就补充。
+        针对"联想至像大象系列"等 LLM 容易漏的不常见商品名。
+        """
+        try:
+            all_items = self._load_all_item_names()
+            if not all_items:
+                return item_names
+
+            extracted_set = set(name.replace(" ", "") for name in item_names)
+            added = []
+
+            for item_name in all_items:
+                item_clean = item_name.replace(" ", "")
+                if item_clean in extracted_set:
+                    continue
+
+                keywords = self._extract_keywords(item_name)
+                for kw in keywords:
+                    if kw and kw in query:
+                        item_names.append(item_name)
+                        extracted_set.add(item_clean)
+                        added.append(f"{item_name}(关键词:{kw})")
+                        break
+
+            if added:
+                logger.info(f"规则兜底补充商品名: {added}")
+            return item_names
+        except Exception as e:
+            logger.error(f"规则匹配兜底失败: {e}")
+            return item_names
+
+    def _load_all_item_names(self) -> List[str]:
+        """从 kb_item_names 集合加载所有商品名（带缓存，只加载一次）"""
+        if hasattr(self, '_cached_item_names') and self._cached_item_names:
+            return self._cached_item_names
+
+        try:
+            client = get_milvus_client()
+            collection_name = milvus_config.item_name_collection
+            results = client.query(
+                collection_name=collection_name,
+                output_fields=["item_name"],
+                limit=10000
+            )
+            self._cached_item_names = [r.get("item_name", "") for r in results if r.get("item_name")]
+            logger.info(f"从 kb_item_names 加载了 {len(self._cached_item_names)} 个商品名用于规则兜底")
+            return self._cached_item_names
+        except Exception as e:
+            logger.error(f"加载 kb_item_names 失败: {e}")
+            return []
+
+    def _extract_keywords(self, item_name: str) -> List[str]:
+        """从商品名提取核心关键词用于问题匹配"""
+        import re
+        stop_words = ["打印机", "系列", "黑白激光", "多功能", "双面", "一体机", "企业级",
+                       "路由器", "用户指南", "手册", "平板", "笔记本电脑", "台式机", "烫金机",
+                       "华为", "奔图", "联想", "H3C", "Brother", "兄弟"]
+        cleaned = item_name
+        for sw in stop_words:
+            cleaned = cleaned.replace(sw, "")
+
+        keywords = []
+        if len(cleaned) >= 4:
+            keywords.append(cleaned[:6])
+            keywords.append(cleaned[:4])
+        if len(item_name) >= 4:
+            keywords.append(item_name[:6])
+
+        # 提取型号部分（如 P3000, W585X, ER2100, B7-420）
+        model_match = re.search(r'[A-Za-z]+[\-]?\d+[A-Za-z]*', item_name)
+        if model_match:
+            keywords.append(model_match.group())
+
+        # 特殊关键词：大象、至像、领像、擎云、MateBook、Panda、Pantum 等
+        special = ["大象", "至像", "领像", "擎云", "MateBook", "Panda", "Pantum", "HAK", "MER"]
+        for sp in special:
+            if sp in item_name:
+                keywords.append(sp)
+
+        return list(set(kw for kw in keywords if kw and len(kw) >= 2))
 
     def _step_5_vectorize_and_query(self, item_names)->List[Dict]:
         """

@@ -30,6 +30,7 @@ class MinioImageStore:
     def _clean_directory(self, prefix: str):
         try:
             objects = self.client.list_objects(self.bucket_name, prefix=prefix, recursive=True)
+            #DeleteObject(obj.object_name)构造一个待删除项的数据对象
             delete_list = [DeleteObject(obj.object_name) for obj in objects]
             if delete_list:
                 errors = self.client.remove_objects(self.bucket_name, delete_list)
@@ -67,5 +68,6 @@ class MinioImageStore:
         for img_file, (summary, new_url) in image_info.items():
             # [^\]]* 限制方括号内不能含]，[^)]* 限制括号内不能含)，避免跨图片引用匹配
             pattern = re.compile(r"!\[[^\]]*\]\([^)]*" + re.escape(img_file) + r"[^)]*\)")
+            #pattern.sub(替换规则, 被处理的字符串)
             md_content = pattern.sub(lambda m: f"![{summary}]({new_url})", md_content)
         return md_content

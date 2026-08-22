@@ -19,6 +19,7 @@ class ImageScanner:
             if file_ext not in self.image_extensions:
                 continue
             img_path = str(images_dir / image_file)
+            # 查找图片在MD中的上下文
             context = self._find_image_in_md(md_content, image_file)
             if not context:
                 continue
@@ -27,6 +28,7 @@ class ImageScanner:
 
     @staticmethod
     def _find_image_in_md(md_content: str, image_file: str, context_len: int = 100) -> Optional[Tuple[str, str]]:
+        #re.escape(image_file)：对图片文件名转义，文件名里如果有 . \ * ? 这类正则特殊符号，不会被当成正则语法，当作普通文本匹配
         pattern = re.compile(r"!\[.*?\]\(.*?" + re.escape(image_file) + r".*?\)")
         match = pattern.search(md_content)
         if not match:

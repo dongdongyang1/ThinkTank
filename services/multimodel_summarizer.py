@@ -14,7 +14,7 @@ from utils.llm_utils import get_llm_client
 class MultimodalSummarizer:
     """多模态摘要服务：调用大模型生成图片摘要，带API滑动窗口限流，支持线程池并发"""
 
-    def __init__(self, requests_per_minute: int = 15, max_side: int = 1568, quality: int = 85, max_workers: int = 5):
+    def __init__(self, requests_per_minute: int = 15, max_side: int = 1568, quality: int = 85, max_workers: int = 3):
         self.requests_per_minute = requests_per_minute
         self.max_side = max_side
         self.quality = quality
@@ -29,7 +29,12 @@ class MultimodalSummarizer:
         def _process(img_file: str, image_path: str, context: Tuple[str, str]):
             # 限流必须在锁内，多线程共享同一个滑动窗口
             with lock:
-                self._apply_rate_limit(request_deque)
+                need_wait = self._apply_rate_limit(request_deque)
+
+            # sleep挪到锁外面！释放锁之后再睡，不堵其他线程
+            if need_wait > 0:
+                time.sleep(need_wait)
+
             summary = self._summarize_image(image_path, doc_stem, context)
             return img_file, summary
 
@@ -45,14 +50,17 @@ class MultimodalSummarizer:
         current_time = time.time()
         while request_times and current_time - request_times[0] >= window_seconds:
             request_times.popleft()
+
         if len(request_times) >= self.requests_per_minute:
             sleep_duration = window_seconds - (current_time - request_times[0])
             if sleep_duration > 0:
-                time.sleep(sleep_duration)
-                current_time = time.time()
-                while request_times and current_time - request_times[0] >= window_seconds:
-                    request_times.popleft()
+                # time.sleep(sleep_duration)
+                # current_time = time.time()
+                # while request_times and current_time - request_times[0] >= window_seconds:
+                #     request_times.popleft()
+                return max(sleep_duration,0.0)
         request_times.append(current_time)
+        return 0.0
 
     def _encode_image(self, image_path: str):
         """压缩大图并转base64，返回 (base64_str, mime_type)"""

@@ -78,7 +78,7 @@ async def query(background_tasks:BackgroundTasks,request:QueryRequest):
     # 更新任务状态
     # 当前会话id作为key! 整体装填处于运行中！
     update_task_status(session_id,TASK_STATUS_PROCESSING,is_stream)
-    logger.info("开始处理流程... 是否流式:", is_stream, f"其他参数:{user_query}, session_id:{session_id}")
+    logger.info(f"开始处理流程... 是否流式: {is_stream}, 用户问题: {user_query}, session_id: {session_id}")
 
     if is_stream:
         # 如果是流式，则返回一个流式响应，过程不断地推送
@@ -95,10 +95,12 @@ async def query(background_tasks:BackgroundTasks,request:QueryRequest):
         # （node_web_search_mcp 内部有显式使用独立 loop 以自文档化，不能直接在 loop 线程里执行）
         await asyncio.to_thread(run_query_graph, session_id, user_query, is_stream)
         answer = get_task_result(session_id, "answer", "")
+        image_urls = get_task_result(session_id, "image_urls", [])
         return {
             "message": "处理完成！",
             "session_id": session_id,
             "answer": answer,
+            "image_urls": image_urls,
             "done_list": []
         }
 
