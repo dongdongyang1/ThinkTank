@@ -1,3 +1,6 @@
+"""
+知识库导入 Celery 任务（从原 utils/celery_tasks.py 迁移）
+"""
 import logging
 
 from config.celery_config import celery
@@ -45,7 +48,6 @@ def kb_import_task(self, task_id: str, file_dir: str, import_file_path: str):
     except Exception as e:
         update_task_status(task_id, TASK_STATUS_FAILED)
         set_task_result(task_id, "error_msg", str(e))
-        # 原代码 self.logger() 是bug：celery 5 中 self.logger 不是方法，这段分支从未跑过所以没炸
         logging.getLogger(__name__).info(f"[{task_id}] LangGraph执行失败，异常：{str(e)}", exc_info=True)
-        # 瞬时异常自动重试。注意：会整条流水线重跑，MinerU 会重复上传解析，如不能接受删掉这行并把max_retries=0
+        # 瞬时异常自动重试
         self.retry(exc=e, countdown=3)

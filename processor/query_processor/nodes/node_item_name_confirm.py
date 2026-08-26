@@ -52,6 +52,7 @@ class NodeItemNameConfirm(NodeBase):
         extract_res = self._step_4_extract_info(original_query,history)
         item_names = extract_res.get("item_names")
         rewritten_query = extract_res.get("rewritten_query",original_query)
+        is_comparison = extract_res.get("is_comparison", False)
 
         # 4.5 规则匹配兜底：LLM 漏了的商品名用关键词补（针对大象系列等不常见名称）
         item_names = self._rule_based_item_name_fallback(original_query, item_names)
@@ -59,6 +60,8 @@ class NodeItemNameConfirm(NodeBase):
         # 更新状态
         state["rewritten_query"] = rewritten_query
         state["item_names"] = item_names
+        state["is_comparison"] = is_comparison
+        logger.info(f"问题类型判定 is_comparison={is_comparison}（LLM）")
 
         # 5 &6 如果有提取到商品名，进行搜索和对齐
         align_result = {}
@@ -141,8 +144,23 @@ class NodeItemNameConfirm(NodeBase):
             if "item_names" not in result:
                 result["item_names"] = []
 
+            # 确保返回结果包含is_comparison字段，无则默认为False
+            if "is_comparison" not in result:
+                result["is_comparison"] = False
+            else:
+                # 规范化布尔值（LLM 可能返回字符串 "true"/"false" 或 1/0）
+                raw_comp = result["is_comparison"]
+                result["is_comparison"] = (
+                    raw_comp is True
+                    or raw_comp == "true"
+                    or raw_comp == "True"
+                    or raw_comp == 1
+                    or raw_comp == "1"
+                )
+
             # 确保返回结果包含rewritten_query字段，无则复用原始查询
-            if "rewritten_query" not in result:
+            # 注意：用 not result.get() 而不是 not in，因为 LLM 可能返回 "rewritten_query": null
+            if not result.get("rewritten_query"):
                 result["rewritten_query"] = query
 
             # 9. 给item_names去除空格
@@ -160,7 +178,7 @@ class NodeItemNameConfirm(NodeBase):
             # 捕获所有异常（如LLM调用失败、JSON解析失败等），记录错误日志
             logger.error(f"大模型调用异常：{str(e)}")
             # 异常时返回默认结果：空商品名列表+原始查询
-            return {"item_names": [], "rewritten_query": query}
+            return {"item_names": [], "rewritten_query": query, "is_comparison": False}
 
     def _rule_based_item_name_fallback(self, query: str, item_names: List[str]) -> List[str]:
         """
@@ -218,32 +236,16 @@ class NodeItemNameConfirm(NodeBase):
             return []
 
     def _extract_keywords(self, item_name: str) -> List[str]:
-        """从商品名提取核心关键词用于问题匹配"""
+        """从商品名提取精确型号关键词用于问题匹配"""
         import re
-        stop_words = ["打印机", "系列", "黑白激光", "多功能", "双面", "一体机", "企业级",
-                       "路由器", "用户指南", "手册", "平板", "笔记本电脑", "台式机", "烫金机",
-                       "华为", "奔图", "联想", "H3C", "Brother", "兄弟"]
-        cleaned = item_name
-        for sw in stop_words:
-            cleaned = cleaned.replace(sw, "")
-
+        # 只提取型号级关键词（如 P3000、W585X、ER2100、HAK180）
+        # 不用"擎云/大象/至像"等宽泛品牌词做补充触发，避免把同系列所有型号误补进来
+        # 不用截断词（前6/前4位），避免误匹配
+        # 代价：无数字型号的商品名（如"大象系列"）不参与规则兜底，依赖 LLM 提取
         keywords = []
-        if len(cleaned) >= 4:
-            keywords.append(cleaned[:6])
-            keywords.append(cleaned[:4])
-        if len(item_name) >= 4:
-            keywords.append(item_name[:6])
-
-        # 提取型号部分（如 P3000, W585X, ER2100, B7-420）
-        model_match = re.search(r'[A-Za-z]+[\-]?\d+[A-Za-z]*', item_name)
+        model_match = re.search(r'(?:[A-Za-z0-9.])+([\-][a-zA-Z0-9]+)*', item_name)
         if model_match:
             keywords.append(model_match.group())
-
-        # 特殊关键词：大象、至像、领像、擎云、MateBook、Panda、Pantum 等
-        special = ["大象", "至像", "领像", "擎云", "MateBook", "Panda", "Pantum", "HAK", "MER"]
-        for sp in special:
-            if sp in item_name:
-                keywords.append(sp)
 
         return list(set(kw for kw in keywords if kw and len(kw) >= 2))
 
@@ -380,9 +382,9 @@ class NodeItemNameConfirm(NodeBase):
                 high.sort(key=lambda m:m.get("score",0),reverse=True)
                 picked = None
                 if extracted_name:
-                    for m in high:
-                        if m.get("item_name")==extracted_name:
-                            picked = m
+                    for h in high:
+                        if h.get("item_name")==extracted_name:
+                            picked = h
                             break
                 if not picked:
                     picked = high[0]
@@ -416,16 +418,16 @@ class NodeItemNameConfirm(NodeBase):
 
         # 分支A：有确认的商品名（高置信度，无需用户确认）
         if confirmed:
-            # 收集历史消息中未关联商品名的消息ID（需批量更新关联）
-            ids_to_update = []  #列表
+            # 收集所有历史消息ID（高置信度确认分支，直接覆盖已有错误关联）
+            # 原逻辑只更新 item_names 为空的消息，导致之前错误关联的商品名永远无法修正
+            ids_to_update = []
             for msg in history:
-                if not msg.get("item_names"):  # 仅更新item_names为空的历史消息
-                    mid = msg.get("_id")
-                    if mid:
-                        ids_to_update.append(str(mid))
-            # 若存在需更新的消息ID，批量更新历史消息的商品名关联
+                mid = msg.get("_id")
+                if mid:
+                    ids_to_update.append(str(mid))
+            # 若存在需更新的消息ID，批量更新历史消息的商品名关联（覆盖已有值）
             if ids_to_update:
-                update_message_item_names(ids_to_update,confirmed)
+                update_message_item_names(ids_to_update, confirmed)
 
             # 更新会话状态：设置确认商品名、改写后的查询
             state["item_names"] = confirmed

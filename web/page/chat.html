@@ -41,6 +41,19 @@
             align-items: center;
             gap: 8px;
         }
+        .new-chat-btn {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.35);
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+        .new-chat-btn:hover {
+            background: rgba(255,255,255,0.28);
+        }
         .switch-box {
             width: 40px;
             height: 20px;
@@ -155,10 +168,13 @@
             <span>知识库问答</span>
             <span class="status-tag status-idle" id="conn-status">未连接</span>
         </div>
-        <div class="stream-switch">
-            <span>流式输出</span>
-            <div class="switch-box" id="stream-switch">
-                <div class="switch-dot"></div>
+        <div style="display:flex;align-items:center;gap:16px;">
+            <button class="new-chat-btn" id="new-chat-btn">新对话</button>
+            <div class="stream-switch">
+                <span>流式输出</span>
+                <div class="switch-box" id="stream-switch">
+                    <div class="switch-dot"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -177,6 +193,8 @@
         const API_BASE = "http://127.0.0.1:8002";
         // 全局变量
         let sessionId = localStorage.getItem("chat_session_id") || "";
+        let currentTaskId = ""; // 当前任务ID，用于SSE连接和Redis状态隔离
+        let hasDelta = false; // 是否已收到delta流式输出（避免final重复覆盖）
         let eventSource = null;
         let streamMode = true; // 默认开启流式
         let currentAiWrap = null; // 当前AI外层容器
@@ -185,6 +203,7 @@
         // DOM元素
         const connStatusDom = document.getElementById("conn-status");
         const streamSwitchDom = document.getElementById("stream-switch");
+        const newChatBtnDom = document.getElementById("new-chat-btn");
         const chatBoxDom = document.getElementById("chat-box");
         const inputDom = document.getElementById("input-text");
         const sendBtnDom = document.getElementById("send-btn");
@@ -199,6 +218,9 @@
                 streamSwitchDom.classList.toggle("open", streamMode);
             })
             streamSwitchDom.classList.toggle("open", streamMode);
+
+            // 新对话按钮
+            newChatBtnDom.addEventListener("click", startNewChat);
 
             // 有会话ID则启用发送按钮
             if (sessionId) sendBtnDom.disabled = false;
@@ -241,6 +263,7 @@
                 })
                 const data = await res.json();
                 sessionId = data.session_id;
+                currentTaskId = data.task_id || "";
                 localStorage.setItem("chat_session_id", sessionId);
                 sendBtnDom.disabled = false;
 
@@ -283,13 +306,17 @@
             }
         }
 
-        // 创建SSE长连接 /stream/{session_id}
+        // 创建SSE长连接 /stream/{task_id}
         function createSSEConnection() {
+            if (!currentTaskId) {
+                console.warn("无 task_id，无法建立SSE连接");
+                return;
+            }
             closeSSE();
             connStatusDom.className = "status-tag status-idle";
             connStatusDom.innerText = "连接中...";
 
-            eventSource = new EventSource(`${API_BASE}/stream/${sessionId}`);
+            eventSource = new EventSource(`${API_BASE}/stream/${currentTaskId}`);
 
             // 连接成功
             eventSource.onopen = () => {
@@ -313,7 +340,9 @@
                 if(!currentAiWrap) return;
                 const answerDom = currentAiWrap.querySelector(".answer-text");
                 if(!answerDom) return;
+                hasDelta = true;
                 answerDom.innerText += data.delta;
+                scrollBottom();
             })
 
             eventSource.addEventListener("final", (e) => {
@@ -322,10 +351,12 @@
                 const answerDom = currentAiWrap.querySelector(".answer-text");
                 if(!answerDom) return;
 
-                // 清理文本中可能残留的【图片】区块（旧Prompt产物），避免与下方image_urls重复渲染
-                let cleanAnswer = data.answer || "";
-                cleanAnswer = cleanAnswer.replace(/【图片】[\s\S]*$/, "").trim();
-                answerDom.innerText = cleanAnswer;
+                // 如果已经通过 delta 流式输出了答案，final 不再覆盖文本（避免重复）
+                if (!hasDelta) {
+                    let cleanAnswer = data.answer || "";
+                    cleanAnswer = cleanAnswer.replace(/【图片】[\s\S]*$/, "").trim();
+                    answerDom.innerText = cleanAnswer;
+                }
 
                 // 渲染图片
                 if(Array.isArray(data.image_urls) && data.image_urls.length>0){
@@ -368,6 +399,27 @@
             }
         }
 
+        // 开始新对话：清除 session_id、清空聊天界面、重置所有状态
+        function startNewChat() {
+            // 清除 session_id（下次请求后端会自动生成新的 uuid）
+            sessionId = "";
+            localStorage.removeItem("chat_session_id");
+            // 清空聊天界面
+            chatBoxDom.innerHTML = "";
+            // 重置任务状态
+            currentTaskId = "";
+            hasDelta = false;
+            currentAiWrap = null;
+            progressDom = null;
+            // 关闭可能存在的 SSE 连接
+            closeSSE();
+            // 重置连接状态显示
+            connStatusDom.className = "status-tag status-idle";
+            connStatusDom.innerText = "未连接";
+            // 启用发送按钮（新对话可以直接发消息）
+            sendBtnDom.disabled = false;
+        }
+
         // 添加用户消息气泡
         function addUserMsg(text) {
             const wrap = document.createElement("div");
@@ -379,6 +431,7 @@
 
         // 创建AI回答容器（带进度折叠面板）
         function createAiWrap() {
+            hasDelta = false; // 重置流式标志
             const wrap = document.createElement("div");
             wrap.className = "msg-item ai-msg";
             wrap.innerHTML = `

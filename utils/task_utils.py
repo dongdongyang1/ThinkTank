@@ -138,6 +138,37 @@ def get_task_result(task_id: str, key: str, default: Any = None) -> Any:
 def cleanup_task_record(task_id: str):
     """删除任务全部状态（修复原签名bug：多了个str参数）"""
     _redis_client.delete(_task_key(task_id))
+    _redis_client.delete(_delta_key(task_id))
+
+
+# ==================== Delta 流式输出（Redis 列表缓冲） ====================
+def _delta_key(task_id: str) -> str:
+    """Delta 列表的 Redis key"""
+    return f"kb_import:task:{task_id}:deltas"
+
+
+def push_delta(task_id: str, delta: str):
+    """
+    追加一个 delta 片段到 Redis 列表（Celery worker 端调用）。
+    SSE 端点通过 get_new_deltas 读取并推送给前端。
+    """
+    if not delta:
+        return
+    _redis_client.rpush(_delta_key(task_id), delta)
+    _redis_client.expire(_delta_key(task_id), TASK_TTL_SECONDS)
+
+
+def get_new_deltas(task_id: str, start_index: int = 0) -> list:
+    """
+    读取从 start_index 开始的新 delta（SSE 端点调用）。
+    返回 (delta_list, new_index)
+    """
+    key = _delta_key(task_id)
+    total = _redis_client.llen(key)
+    if total <= start_index:
+        return [], start_index
+    deltas = _redis_client.lrange(key, start_index, -1)
+    return deltas, total
 
 
 # ===================== SSE会话队列管理（聊天流式，会话级数据保持进程内存，不改） =====================

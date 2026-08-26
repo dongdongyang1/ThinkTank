@@ -181,3 +181,12 @@ results/
 # 图片/媒体临时资源
 *.png
 *.jpg
+
+# MinerU 解析缓存（体积巨大，含原始PDF和图片）
+.mineru_cache/
+
+# 评估运行产物
+eval_results/
+
+# 备份文件
+*.bak

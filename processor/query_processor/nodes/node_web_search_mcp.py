@@ -24,7 +24,6 @@ class NodeWebSearchMcp(NodeBase):
         docs = []
         # 如果没有查询内容，直接返回
         if query:
-            #asyncio.run专门用来启动、运行异步协程
             loop = asyncio.new_event_loop()
             try:
                 result = loop.run_until_complete(self._mcp_call(query))
@@ -33,20 +32,26 @@ class NodeWebSearchMcp(NodeBase):
 
             if result:
                 logger.info(f"MCP原始返回result:{result}")
-                text = result.content[0].text
-                logger.info(f"text原始内容 >>>{text}<<<")
-                data = json.loads(text) if isinstance(text, str) else text
-                pages = data.get("pages") or []
-                # 统一输出结构化结果，供后续 rerank/引用使用
-                # 每条：{title, url, snippet}
-                for item in pages:
-                    snippet = (item.get("snippet") or "").strip()
-                    url = (item.get("url") or "").strip()
-                    title = (item.get("title") or "").strip()
-                    if not snippet:
-                        continue
-                    docs.append({"title":title,"url":url,"snippet":snippet})
-                    logger.info(f"MCP 搜索结果:{docs}")
+                # 1.防护content为空
+                if not result.content or len(result.content) == 0:
+                    logger.warning("MCP返回content为空")
+                else:
+                    text = result.content[0].text
+                    logger.info(f"text原始内容 >>>{text}<<<")
+                    try:
+                        data = json.loads(text) if isinstance(text, str) else text
+                        pages = data.get("pages") or []
+                        for item in pages:
+                            snippet = (item.get("snippet") or "").strip()
+                            url = (item.get("url") or "").strip()
+                            title = (item.get("title") or "").strip()
+                            if not snippet:
+                                continue
+                            docs.append({"title": title, "url": url, "snippet": snippet})
+                            logger.info(f"MCP 搜索结果:{docs}")
+                    except json.JSONDecodeError as e:
+                        logger.error(f"MCP返回JSON解析失败:{str(e)}, raw_text={text}")
+
         if docs:
             state["web_search_docs"] = docs
             return state

@@ -1,10 +1,11 @@
 import logging
 import os
+import time
 from datetime import datetime
 
 from bson import ObjectId
 from dotenv import load_dotenv
-from pymongo import MongoClient, ASCENDING
+from pymongo import MongoClient, ASCENDING, DESCENDING
 from typing import List,Dict,Any
 
 load_dotenv()
@@ -88,7 +89,8 @@ def save_chat_messages(
         rewritten_query:str = "",
         item_names : List[str] = None,
         image_urls : List[str] = None,
-        message_id : str =None
+        message_id : str =None,
+        summary : str = "",
 ) ->str:
     """
     写入/更新单条会话记录到MongoDB
@@ -100,10 +102,11 @@ def save_chat_messages(
     :param item_names: 关联的商品名称列表（可选，支持多商品，默认None）
     :param image_urls: 关联的图片URL列表（可选，默认None）
     :param message_id: 记录主键ID（可选，有值则更新，无值则新增）
+    :param summary: assistant 回答的一句话摘要（上下文压缩用，user消息为空）
     :return: 插入/更新的记录唯一标识（新增返回ObjectId字符串，更新返回传入的message_id）
     """
-    # 生成当前时间的时间戳（秒级），用于记录消息的创建时间，后续用于排序和查询
-    ts = datetime.now().timestamp()
+    # 生成当前时间的时间戳（纳秒整数，保证连续写入不重复、排序稳定）
+    ts = time.time_ns()
 
     # 构造要插入/更新的文档数据（MongoDB的基本数据单元是文档)
     document = {
@@ -113,6 +116,7 @@ def save_chat_messages(
         "rewritten_query" : rewritten_query or "",
         "item_names" : item_names,
         "image_urls" : image_urls,
+        "summary" : summary or "",
         "ts" : ts
     }
 
@@ -152,20 +156,27 @@ def update_message_item_names(ids: List[str], item_names: List[str]) -> int:
         # 异常时返回0，标识更新失败
         return 0
 
-def get_recent_messages(session_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+def get_recent_messages(session_id: str, limit: int = 10, max_age_hours: int = 24) -> List[Dict[str, Any]]:
+    """
+    获取指定会话的最近消息（带时间窗口，防止 session_id 复用时旧会话历史污染新会话）
+    :param session_id: 会话唯一标识
+    :param limit: 返回最大条数
+    :param max_age_hours: 只返回最近 N 小时内的消息；为 None 时不限制时间（查看完整历史用）
+    :return: 最近消息列表（时间正序）
+    """
     mongo_tool = get_history_mongo_tool()
     try:
-        # 构造查询条件：仅查询指定session_id的记录
+        # 构造查询条件：按 session_id 过滤 + 可选时间窗口
         query = {"session_id": session_id}
+        if max_age_hours is not None:
+            cutoff_ns = time.time_ns() - max_age_hours * 3600 * 1_000_000_000
+            query["ts"] = {"$gte": cutoff_ns}
 
-        # 执行查询：按时间戳升序排序，限制返回条数
-        # find(query)：获取符合条件的游标（惰性加载，不立即查询）
-        # sort("ts", ASCENDING)：按ts字段升序（从旧到新），适配LLM上下文顺序
-        # limit(limit)：限制返回的最大条数
-        cursor = mongo_tool.chat_message.find(query).sort("ts", ASCENDING).limit(limit)
+        # 先按时间倒序取最新的 limit 条，再反转回正序，保证返回"最近 N 条且时间递增"
+        cursor = mongo_tool.chat_message.find(query).sort("ts", DESCENDING).limit(limit)
 
-        # 将游标转为列表，触发实际数据库查询，获取所有符合条件的文档
-        messages = list(cursor)
+        # 将游标转为列表后反转，得到从旧到新的最近 limit 条
+        messages = list(reversed(list(cursor)))
 
         return messages
     except Exception as e:

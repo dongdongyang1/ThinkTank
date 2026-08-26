@@ -61,6 +61,7 @@ class NodeRerank(NodeBase):
                 "content" : rrf_doc.get("content"),
                 "title" : rrf_doc.get("title"),
                 "chunks_id" : rrf_doc.get("chunks_id"),
+                "item_name" : rrf_doc.get("item_name", ""),
                 "url" : None,
                 "source" : "local"
             }
@@ -88,7 +89,12 @@ class NodeRerank(NodeBase):
             return []
         try:
             user_query = state.get("rewritten_query")
-            # 获取文档列表的conten字段组成列表
+            # 兜底：rewritten_query 可能为 None 或空字符串（LLM 返回 null 或上游节点未设置）
+            # rerank API 要求 query 非空，否则报 "query and documents are required!"
+            if not user_query:
+                user_query = state.get("original_query", "")
+                logger.warning(f"rerank: rewritten_query 为空，使用 original_query 兜底: {user_query}")
+            # 获取文档列表的content字段组成列表
             contents = [doc.get("content") for doc in merge_muti_docs]
             # 调用Rerank模型：交叉编码器（精排阶段）
             # Query 和 Document 联合编码，精度更高

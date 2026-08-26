@@ -43,14 +43,31 @@ def get_bge_m3_ef():
     return _bge_m3_ef
 
 
-def generate_embeddings(texts ):
+def generate_embeddings(texts, _retry=True):
     """
     为文本生成向量嵌入
     :param texts: 要生成嵌入的文本列表
     :return: 包含dense和sparse向量的字典
     """
     model = get_bge_m3_ef()
-    embeddings = model.encode_documents(texts)
+    try:
+        embeddings = model.encode_documents(texts)
+    except Exception as e:
+        # FlagEmbedding + fp16 + GPU 下偶发 "meta tensor" 错误（Cannot copy out of meta tensor; no data!）。
+        # 这是库级偶发问题，重建模型 + 清缓存后重试一次即可恢复。
+        if _retry and ("meta tensor" in str(e) or "to_empty" in str(e)):
+            logger.error(f"BGE-M3 推理出现 meta tensor 错误，重建模型并重试: {e}")
+            global _bge_m3_ef
+            _bge_m3_ef = None
+            try:
+                import torch, gc
+                torch.cuda.empty_cache()
+                gc.collect()
+            except Exception:
+                pass
+            return generate_embeddings(texts, _retry=False)
+        raise
+
     processed_sparse = []
     for i in range(len(texts)):
         sparse_indices = embeddings["sparse"].indices[

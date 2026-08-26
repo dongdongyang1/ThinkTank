@@ -39,6 +39,10 @@ class NodeSearchHyde(NodeBase):
         logger.info(f"【{self.name}】节点逻辑")
         #  1.用户问题和已确认商品名
         rewritten_query = state.get("rewritten_query")
+        # 兜底：rewritten_query 可能为 None（LLM 返回 null 或上游节点未设置）
+        if not rewritten_query:
+            rewritten_query = state.get("original_query", "")
+            logger.warning(f"rewritten_query 为空，使用 original_query 兜底: {rewritten_query}")
         item_names = state.get("item_names")
         try:
             # 2. 生成假设性文档

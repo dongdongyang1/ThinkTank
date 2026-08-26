@@ -1,4 +1,5 @@
 import asyncio
+import json
 import uuid
 from pathlib import Path
 from typing import Optional
@@ -7,200 +8,217 @@ import uvicorn
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
 from pydantic import BaseModel, Field
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import FileResponse
+from starlette.responses import FileResponse, StreamingResponse
 
 from processor.query_processor.logger import logger
-from processor.query_processor.main_graph import KBQueryWorkflow
+from utils.celery_tasks.query_tasks import run_agent_task
 from utils.mongo_history_utils import clear_history, get_recent_messages
-from utils.sse_utils import SSEEvent, create_sse_stream
 from utils.task_utils import (
-    create_sse_queue, update_task_status, TASK_STATUS_PROCESSING,
-    get_task_result, set_task_result, TASK_STATUS_COMPLETED, TASK_STATUS_FAILED,
-    push_to_session_nowait, register_main_loop, push_to_session,
+    get_task_status, get_task_result, get_new_deltas,
+    TASK_STATUS_PROCESSING, TASK_STATUS_COMPLETED, TASK_STATUS_FAILED,
 )
 
 # 1. 创建应用
 app = FastAPI(
     title="知识库问答-查询API",
-    description="此文档是掌柜智库查询流程的API接口说明"
+    description="掌柜智库查询流程API（Agent + Celery 异步版）"
 )
 
 # 2. 跨域
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 允许的源
-    allow_credentials=True,  # 允许携带cookie
-    allow_methods=["*"],  # 允许的请求方法
-    allow_headers=["*"],  # 允许的请求头
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # 3. 静态页面路由
 @app.get("/chat.html")
 async def chat():
     current_dir_parent_path = Path(__file__).absolute().parent.parent
-    html_path = current_dir_parent_path/ "page" / "chat.html"
-
-    # 如果不存在，抛出404异常
+    html_path = current_dir_parent_path / "page" / "chat.html"
     if not html_path.exists():
         raise HTTPException(status_code=404, detail=f"没有查询到页面，地址为：{html_path}")
     return FileResponse(html_path)
 
 
 class QueryRequest(BaseModel):
-    """查询请求数据结构"""
-    query : str = Field(..., description="查询内容")
-    session_id : Optional[str] = Field(None,description="会话ID")
-    is_stream : bool  = Field(False,description="是否流式返回")
+    query: str = Field(..., description="查询内容")
+    session_id: Optional[str] = Field(None, description="会话ID")
+    is_stream: bool = Field(False, description="是否流式返回")
+
+
+def _sse_format(event: str, data: dict) -> str:
+    """格式化 SSE 事件"""
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+async def celery_sse_generator(task_id: str, request: Request):
+    """
+    轮询 Redis 的 SSE 生成器（Celery worker 在独立进程，通过 Redis 共享进度）
+    - 每 0.1 秒轮询一次（降低延迟，提升流式体验）
+    - 有新节点完成时推送 progress 事件
+    - 有新 delta 时推送 delta 事件（流式输出）
+    - 任务完成时推送 final 事件（含答案）
+    - 任务失败时推送 error 事件
+    """
+    last_done_count = 0
+    delta_index = 0
+    max_wait_seconds = 300  # 最长等待5分钟，防止无限轮询
+    waited = 0
+
+    while True:
+        # 客户端断开则停止
+        if await request.is_disconnected():
+            logger.info(f"SSE 客户端断开: task={task_id}")
+            break
+
+        status = get_task_status(task_id)
+        progress = get_task_result(task_id, "progress", {})
+        done_list = progress.get("done_list", [])
+
+        # 有新节点完成时推送进度
+        if len(done_list) > last_done_count:
+            last_done_count = len(done_list)
+            yield _sse_format("progress", {
+                "done_list": done_list,
+                "running_list": [],
+                "status": status,
+            })
+
+        # 推送新的 delta（流式输出）
+        new_deltas, delta_index = get_new_deltas(task_id, delta_index)
+        for delta in new_deltas:
+            yield _sse_format("delta", {"delta": delta})
+
+        # 任务完成
+        if status == TASK_STATUS_COMPLETED:
+            answer = get_task_result(task_id, "answer", "")
+            image_urls = get_task_result(task_id, "image_urls", [])
+            # 最后再推一次剩余 delta
+            remaining, delta_index = get_new_deltas(task_id, delta_index)
+            for delta in remaining:
+                yield _sse_format("delta", {"delta": delta})
+            yield _sse_format("final", {
+                "answer": answer,
+                "status": "completed",
+                "image_urls": image_urls,
+            })
+            logger.info(f"SSE 任务完成: task={task_id}, 答案长度={len(answer)}")
+            break
+
+        # 任务失败
+        if status == TASK_STATUS_FAILED:
+            error = get_task_result(task_id, "error", "未知错误")
+            yield _sse_format("error", {"error": error})
+            logger.error(f"SSE 任务失败: task={task_id}, error={error}")
+            break
+
+        # 超时保护
+        if waited >= max_wait_seconds:
+            yield _sse_format("error", {"error": "任务执行超时（超过5分钟）"})
+            break
+
+        waited += 0.1
+        await asyncio.sleep(0.1)
 
 
 @app.post("/query")
-async def query(background_tasks:BackgroundTasks,request:QueryRequest):
+async def query(request: QueryRequest):
     """
-    1 解析参数
-    2 更新任务状态
-    3 调用处理流程图
-    4 返回结果
-    :param background_tasks:
-    :param request:
-    :return:
+    查询接口：提交 Celery 异步任务，立即返回 session_id + task_id
+    - 流式：前端通过 /stream/{task_id} 轮询获取进度和结果
+    - 非流式：服务端等待任务完成后返回结果
     """
     user_query = request.query
     session_id = request.session_id if request.session_id else str(uuid.uuid4())
-
-    # 注册主事件循环，供后台任务（线程池）跨线程推送SSE
-    register_main_loop(asyncio.get_running_loop())
-
-    # 处理是不是流式返回结果
+    task_id = str(uuid.uuid4())  # 每次请求唯一 task_id，避免同会话多任务 Redis 状态冲突
     is_stream = request.is_stream
-    if is_stream:
-        # 创建一个字典 存储对一个session_id : queue 结果队列
-        create_sse_queue(session_id)
-    # 更新任务状态
-    # 当前会话id作为key! 整体装填处于运行中！
-    update_task_status(session_id,TASK_STATUS_PROCESSING,is_stream)
-    logger.info(f"开始处理流程... 是否流式: {is_stream}, 用户问题: {user_query}, session_id: {session_id}")
+
+    logger.info(f"提交查询任务: session={session_id}, task={task_id}, stream={is_stream}, query={user_query}")
+
+    # 提交 Celery 任务（异步，不阻塞）
+    run_agent_task.delay(session_id, task_id, user_query, is_stream)
 
     if is_stream:
-        # 如果是流式，则返回一个流式响应，过程不断地推送
-        # 运行执行图对象方法
-        background_tasks.add_task(run_query_graph,session_id,user_query,is_stream)
-        # 返回结果
-        logger.info("开始处理结果....")
+        # 流式：立即返回，前端连 /stream/{task_id} 轮询
         return {
-            "message":"结果正在处理中...",
-            "session_id":session_id
+            "message": "任务已提交，正在处理中...",
+            "session_id": session_id,
+            "task_id": task_id,
         }
     else:
-        # 同步运行：用 to_thread 避免阻塞事件循环
-        # （node_web_search_mcp 内部有显式使用独立 loop 以自文档化，不能直接在 loop 线程里执行）
-        await asyncio.to_thread(run_query_graph, session_id, user_query, is_stream)
-        answer = get_task_result(session_id, "answer", "")
-        image_urls = get_task_result(session_id, "image_urls", [])
-        return {
-            "message": "处理完成！",
-            "session_id": session_id,
-            "answer": answer,
-            "image_urls": image_urls,
-            "done_list": []
-        }
+        # 非流式：轮询 Redis 等待任务完成（最多等5分钟）
+        max_wait = 300
+        waited = 0
+        while waited < max_wait:
+            status = get_task_status(task_id)
+            if status == TASK_STATUS_COMPLETED:
+                answer = get_task_result(task_id, "answer", "")
+                image_urls = get_task_result(task_id, "image_urls", [])
+                return {
+                    "message": "处理完成！",
+                    "session_id": session_id,
+                    "task_id": task_id,
+                    "answer": answer,
+                    "image_urls": image_urls,
+                    "done_list": [],
+                }
+            if status == TASK_STATUS_FAILED:
+                error = get_task_result(task_id, "error", "未知错误")
+                raise HTTPException(status_code=500, detail=f"任务执行失败: {error}")
+            await asyncio.sleep(0.5)
+            waited += 0.5
+
+        raise HTTPException(status_code=504, detail="任务执行超时（超过5分钟）")
 
 
-_workflow = None
-def get_workflow() -> KBQueryWorkflow:
-    global _workflow
-    if _workflow is None:
-        _workflow = KBQueryWorkflow()
-    return _workflow
+@app.get("/stream/{task_id}")
+async def stream(task_id: str, request: Request):
+    """SSE 实时返回结果（轮询 Redis，按 task_id 隔离）"""
+    logger.info(f"SSE 连接建立: task={task_id}")
+    return StreamingResponse(
+        celery_sse_generator(task_id, request),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
-# 定义查询接口
-def run_query_graph(session_id:str,user_query:str,is_stream:bool=False):
-    logger.info(f"开始流程图处理...{session_id} {user_query} {is_stream}")
-    init_state = {
-        "original_query":user_query,
-        "session_id":session_id,
-        "is_stream":is_stream
-    }
-
-    try:
-        workflow = get_workflow()
-        if is_stream:
-            # langgraph 的 stream() 是惰性生成器，必须迭代才会真正执行图
-            final_state = {}
-            done_list = []
-            for event in workflow.run(init_state, stream=True):
-                for node_name, node_state in event.items():
-                    final_state = node_state
-                    done_list.append(node_name)
-                    push_to_session_nowait(session_id, SSEEvent.PROGRESS, {
-                        "done_list": list(done_list),
-                        "running_list": [],
-                        "status": TASK_STATUS_PROCESSING,
-                    })
-            answer = final_state.get("answer", "") if isinstance(final_state, dict) else ""
-            update_task_status(session_id, TASK_STATUS_COMPLETED, is_stream)
-        else:
-            final_state = workflow.run(init_state, stream=False)
-            update_task_status(session_id, TASK_STATUS_COMPLETED, is_stream)
-            # 把答案写入结果缓存，供 /query 同步分支读取
-            set_task_result(session_id, "answer", final_state.get("answer", ""))
-
-    except Exception as e:
-        logger.info(f"流程执行异常: {e}")
-        update_task_status(session_id, TASK_STATUS_FAILED, is_stream)
-
-        if is_stream:
-            push_to_session_nowait(session_id, SSEEvent.ERROR, {"error": str(e)})
-
-
-@app.get("/stream/{session_id}")
-async def stream(session_id:str,request:Request):
-    """
-    sse 实时返回结果
-    """
-    print("调用流式/stream...")
-    return create_sse_stream(session_id,request)
-
-
-#历史会话管理
+# 历史会话管理
 @app.delete("/history/{session_id}")
-async def clear_chat_history(session_id:str):
-    """
-    清空指定会话的历史记录
-    """
-    count = await asyncio.to_thread(clear_history,session_id)
+async def clear_chat_history(session_id: str):
+    count = await asyncio.to_thread(clear_history, session_id)
     return {"message": "历史会话已清空", "deleted_count": count}
 
 
 @app.get("/history/{session_id}")
-async def history(session_id:str,limit:int = 50):
-    """
-    查询当前会话历史记录
-    """
+async def history(session_id: str, limit: int = 50):
     try:
-        records = await asyncio.to_thread(get_recent_messages,session_id,limit=limit)
+        # 查看完整历史接口不限制时间窗口（max_age_hours=None），方便排查问题
+        records = await asyncio.to_thread(get_recent_messages, session_id, limit=limit, max_age_hours=None)
         items = []
         for r in records:
             items.append({
-                "id" : str(r.get("_id")) if r.get("_id") is not None else "",
-                "session_id" : r.get("session_id",""),
-                "role" : r.get("role",""),
-                "text" : r.get("text",""),
-                "rewritten_query" : r.get("rewritten_query",""),
-                "item_names" : r.get("item_names",[]),
-                "ts" : r.get("ts")
+                "id": str(r.get("_id")) if r.get("_id") is not None else "",
+                "session_id": r.get("session_id", ""),
+                "role": r.get("role", ""),
+                "text": r.get("text", ""),
+                "rewritten_query": r.get("rewritten_query", ""),
+                "item_names": r.get("item_names", []),
+                "ts": r.get("ts"),
             })
-        return {"session_id":session_id,"items":items}
+        return {"session_id": session_id, "items": items}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"history error: {e}")
 
 
-# 证明服务器启动即可
 @app.get("/health")
 async def health():
-    """
-    检查服务是否正常
-    """
     return {"ok": True}
 
 
@@ -211,4 +229,4 @@ async def favicon():
 
 
 if __name__ == "__main__":
-    uvicorn.run(app,host="127.0.0.1",port=8002)
+    uvicorn.run(app, host="127.0.0.1", port=8002)
