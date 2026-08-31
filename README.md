@@ -1,21 +1,36 @@
 # ThinkTank
 
-> 基于 RAG + Agent 的企业智能知识库系统，支持 PDF 文档智能解析入库与多轮对话检索。
+> **DAG → ReAct Agent 架构升级** —— 基于 RAG + ReAct Agent 的企业智能知识库系统。PDF 一键智能入库，多轮对话精准检索，LLM 自主推理、动态调用知识库与联网搜索工具，告别固定流水线的僵硬应答。
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.139-009688)](https://fastapi.tiangolo.com/)
-[![LangGraph](https://img.shields.io/badge/LangGraph-1.2-orange)](https://langchain-ai.github.io/langgraph/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-ReAct%20Agent-orange)](https://langchain-ai.github.io/langgraph/)
 [![Milvus](https://img.shields.io/badge/Milvus-3.0-green)](https://milvus.io/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## 功能特性
+## 核心亮点
 
-- **文档智能导入**：PDF → MinerU 解析 → 图片提取 → 语义切分 → 产品名识别 → BGE-M3 向量化 → Milvus 入库，全流程异步化
-- **混合检索问答**：HyDE 查询扩展 → 向量检索 → RRF 融合排序 → Rerank 重排 → 产品名确认 → LLM 答案生成
-- **ReAct Agent**：集成知识库检索（KB Search）与联网搜索（Web Search / MCP）工具，支持多步推理
-- **流式响应**：基于 SSE（Server-Sent Events）的逐字输出
-- **Web 管理界面**：内置文档导入页与对话聊天页
-- **可扩展架构**：配置化管理 LLM、Embedding、Reranker、向量库等组件，便于切换
+### 架构升级：从固定 DAG 到 ReAct Agent
+
+传统 RAG 系统用 DAG 流水线串联检索步骤，查询路径写死、灵活度差。ThinkTank 升级为 **ReAct（Reasoning + Acting）Agent 架构**：
+
+- LLM 自主推理"下一步该做什么"，而非按预设流程硬走
+- 动态调用工具：知识库检索（KB Search）+ 联网搜索（Web Search / MCP）
+- 多步推理链拆解复杂问题，检索不到就换工具再试，告别"硬答"
+
+### 混合检索引擎
+
+HyDE 查询扩展 → 向量检索 → RRF 融合排序 → Rerank 重排 → 产品名确认，层层过滤精准命中。
+
+### PDF 智能入库
+
+MinerU 解析 → 图片提取上传 MinIO → 语义切分 → LLM 产品名识别 → BGE-M3 向量化 → Milvus 入库，全流程 Celery 异步化。
+
+### 更多特性
+
+- **SSE 流式响应**：逐字输出，对话体验流畅
+- **Web 管理界面**：内置文档导入页 + 对话聊天页，开箱即用
+- **配置化架构**：LLM、Embedding、Reranker、向量库全部配置化，一键切换
 
 ## 技术栈
 
