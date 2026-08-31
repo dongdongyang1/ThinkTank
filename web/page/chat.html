@@ -193,6 +193,8 @@
         const API_BASE = "http://127.0.0.1:8002";
         // 全局变量
         let sessionId = localStorage.getItem("chat_session_id") || "";
+        // user_id：用户标识，前端生成后永久存储，不随新对话清除（用于长期记忆跨会话复用）
+        let userId = localStorage.getItem("chat_user_id") || "";
         let currentTaskId = ""; // 当前任务ID，用于SSE连接和Redis状态隔离
         let hasDelta = false; // 是否已收到delta流式输出（避免final重复覆盖）
         let eventSource = null;
@@ -212,6 +214,11 @@
         initPage();
 
         function initPage() {
+            // 初始化 user_id：不存在则生成，永久存储，不随新对话清除
+            if (!userId) {
+                userId = "user_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+                localStorage.setItem("chat_user_id", userId);
+            }
             // 切换流式开关
             streamSwitchDom.addEventListener("click", () => {
                 streamMode = !streamMode;
@@ -250,6 +257,7 @@
             const reqData = {
                 query: queryText,
                 session_id: sessionId || null,
+                user_id: userId,
                 is_stream: streamMode
             };
 

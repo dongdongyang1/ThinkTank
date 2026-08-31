@@ -46,6 +46,7 @@ async def chat():
 class QueryRequest(BaseModel):
     query: str = Field(..., description="查询内容")
     session_id: Optional[str] = Field(None, description="会话ID")
+    user_id: Optional[str] = Field(None, description="用户ID（前端生成，跨会话不变，用于长期记忆）")
     is_stream: bool = Field(False, description="是否流式返回")
 
 
@@ -133,13 +134,14 @@ async def query(request: QueryRequest):
     """
     user_query = request.query
     session_id = request.session_id if request.session_id else str(uuid.uuid4())
+    user_id = request.user_id if request.user_id else "default_user"
     task_id = str(uuid.uuid4())  # 每次请求唯一 task_id，避免同会话多任务 Redis 状态冲突
     is_stream = request.is_stream
 
-    logger.info(f"提交查询任务: session={session_id}, task={task_id}, stream={is_stream}, query={user_query}")
+    logger.info(f"提交查询任务: session={session_id}, user={user_id}, task={task_id}, stream={is_stream}, query={user_query}")
 
     # 提交 Celery 任务（异步，不阻塞）
-    run_agent_task.delay(session_id, task_id, user_query, is_stream)
+    run_agent_task.delay(session_id, task_id, user_query, is_stream, user_id)
 
     if is_stream:
         # 流式：立即返回，前端连 /stream/{task_id} 轮询

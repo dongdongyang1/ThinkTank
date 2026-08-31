@@ -1,7 +1,8 @@
 """
 长期记忆模块
 跨会话存储用户偏好、重要事实、设备信息等。
-基于 MongoDB，支持按重要性筛选、自动提取。
+基于 MongoDB，按 user_id 隔离（user_id 前端生成后永久存储，不随新对话清除），
+支持按重要性筛选、自动提取。
 """
 import os
 import logging
@@ -36,7 +37,7 @@ LLTM_EXTRACT_TEMPLATE = """你是长期记忆提取器，根据对话提取值�
 
 
 class LongTermMemory:
-    """长期记忆管理：MongoDB 存储，按 session_id 隔离"""
+    """长期记忆管理：MongoDB 存储，按 user_id 隔离（跨会话生效）"""
 
     def __init__(self):
         self.mongo_url = os.getenv("MONGO_URL")
@@ -44,22 +45,24 @@ class LongTermMemory:
         self.client = MongoClient(self.mongo_url)
         self.db = self.client[self.db_name]
         self.collection = self.db["long_term_memory"]
-        # 索引：session_id + importance（按重要性查询）
-        self.collection.create_index([("session_id", 1), ("importance", -1)])
-        self.collection.create_index([("session_id", 1), ("created_at", -1)])
+        # 索引：user_id + importance（按重要性查询）
+        self.collection.create_index([("user_id", 1), ("importance", -1)])
+        self.collection.create_index([("user_id", 1), ("created_at", -1)])
+        # 去重索引：同 user + 同内容哈希唯一
+        self.collection.create_index([("user_id", 1), ("content_hash", 1)], unique=True)
         logger.info("LongTermMemory 初始化完成")
 
     def save_memory(
         self,
-        session_id: str,
+        user_id: str,
         content: str,
         memory_type: str = "fact",
         importance: int = 5,
         metadata: Optional[Dict] = None,
     ) -> str:
         """
-        保存一条长期记忆（内容哈希去重：同 session + 同内容 → 更新而非重复插入）
-        :param session_id: 会话/用户标识
+        保存一条长期记忆（内容哈希去重：同 user + 同内容 → 更新而非重复插入）
+        :param user_id: 用户标识（前端生成，跨会话不变）
         :param content: 记忆内容
         :param memory_type: 类型（preference偏好 / fact事实 / device设备 / history历史）
         :param importance: 重要性 1-10，越高越优先加载
@@ -70,19 +73,19 @@ class LongTermMemory:
         content_hash = hashlib.md5(content.encode("utf-8")).hexdigest()
         now = datetime.now().timestamp()
 
-        # 偏好类记忆软覆盖：新偏好存入前，把同 session 所有旧偏好的 importance 降到 1（低于加载阈值 min_importance=3）
+        # 偏好类记忆软覆盖：新偏好存入前，把同 user 所有旧偏好的 importance 降到 1（低于加载阈值 min_importance=3）
         # 解决"喜欢简洁回答"和"喜欢详细回答"等矛盾偏好同时注入 prompt 的问题
         # device/fact/history 类型不处理（用户可能有多个设备、多个事实，互不冲突）
         if memory_type == "preference":
             self.collection.update_many(
-                {"session_id": session_id, "memory_type": "preference"},
+                {"user_id": user_id, "memory_type": "preference"},
                 {"$set": {"importance": 1}}
             )
-            logger.info(f"长期记忆偏好软覆盖: 已将同 session 所有旧偏好降级至 importance=1")
+            logger.info(f"长期记忆偏好软覆盖: 已将同 user 所有旧偏好降级至 importance=1")
 
-        # 去重：同 session + 同内容哈希已存在 → 刷新时间并提升重要性，避免重复堆叠
+        # 去重：同 user + 同内容哈希已存在 → 刷新时间并提升重要性，避免重复堆叠
         existing = self.collection.find_one({
-            "session_id": session_id,
+            "user_id": user_id,
             "content_hash": content_hash,
         })
         if existing:
@@ -97,7 +100,7 @@ class LongTermMemory:
             return str(existing["_id"])
 
         doc = {
-            "session_id": session_id,
+            "user_id": user_id,
             "content": content,
             "content_hash": content_hash,
             "memory_type": memory_type,
@@ -111,7 +114,7 @@ class LongTermMemory:
 
     def get_memories(
         self,
-        session_id: str,
+        user_id: str,
         min_importance: int = 3,
         max_tokens: int = 800,
         max_days: int = 180,
@@ -121,7 +124,7 @@ class LongTermMemory:
         - 按重要性降序、时间降序排列
         - 时间衰减：超过 max_days 的记忆不再注入
         - token 预算：累计内容长度超过预算即停止，防止 prompt 膨胀
-        :param session_id: 会话/用户标识
+        :param user_id: 用户标识（前端生成，跨会话不变）
         :param min_importance: 最低重要性阈值
         :param max_tokens: 记忆区最大 token 预算（保守估 1 token ≈ 2 字符）
         :param max_days: 记忆有效天数，超期自动失效
@@ -130,7 +133,7 @@ class LongTermMemory:
         now = datetime.now().timestamp()
         cutoff = now - max_days * 86400
         query = {
-            "session_id": session_id,
+            "user_id": user_id,
             "importance": {"$gte": min_importance},
             "created_at": {"$gte": cutoff},
         }
@@ -147,15 +150,15 @@ class LongTermMemory:
                 break
             memories.append(m)
             total_chars += content_len
-        logger.info(f"加载长期记忆: session={session_id}, count={len(memories)}"
+        logger.info(f"加载长期记忆: user={user_id}, count={len(memories)}"
                     f"(预算{max_tokens}tokens, 有效期{max_days}天)")
         return memories
 
-    def format_memories_for_prompt(self, session_id: str, min_importance: int = 3) -> str:
+    def format_memories_for_prompt(self, user_id: str, min_importance: int = 3) -> str:
         """
         将长期记忆格式化为提示词文本
         """
-        memories = self.get_memories(session_id, min_importance=min_importance)
+        memories = self.get_memories(user_id, min_importance=min_importance)
         if not memories:
             return ""
         lines = []
@@ -173,7 +176,7 @@ class LongTermMemory:
 
     def extract_and_save(
         self,
-        session_id: str,
+        user_id: str,
         user_query: str,
         assistant_answer: str,
     ) -> int:
@@ -203,7 +206,7 @@ class LongTermMemory:
                 importance = int(m.get("importance", 5))
             except (TypeError, ValueError):
                 importance = 5
-            self.save_memory(session_id, content, mtype, importance)
+            self.save_memory(user_id, content, mtype, importance)
             saved += 1
         if saved > 0:
             logger.info(f"从对话提取并保存了 {saved} 条长期记忆")
@@ -239,31 +242,31 @@ class LongTermMemory:
             return data
         return []
 
-    def prune_session(self, session_id: str, max_items: int = 50) -> int:
+    def prune_user(self, user_id: str, max_items: int = 50) -> int:
         """
-        单会话记忆总量控制：超过 max_items 时，删除最旧、重要性最低的超额部分。
+        单用户记忆总量控制：超过 max_items 时，删除最旧、重要性最低的超额部分。
         防止记忆无限膨胀（MongoDB 只增不减）。
         :return: 删除的记忆条数
         """
-        count = self.collection.count_documents({"session_id": session_id})
+        count = self.collection.count_documents({"user_id": user_id})
         if count <= max_items:
             return 0
         overflow = count - max_items
         cursor = (
-            self.collection.find({"session_id": session_id})
+            self.collection.find({"user_id": user_id})
             .sort([("importance", 1), ("created_at", 1)])
             .limit(overflow)
         )
         ids = [m["_id"] for m in cursor]
         if ids:
             self.collection.delete_many({"_id": {"$in": ids}})
-        logger.info(f"长期记忆淘汰: session={session_id}, 删除 {len(ids)} 条超额记忆")
+        logger.info(f"长期记忆淘汰: user={user_id}, 删除 {len(ids)} 条超额记忆")
         return len(ids)
 
-    def clear_session(self, session_id: str) -> int:
-        """清空指定会话的所有长期记忆"""
-        result = self.collection.delete_many({"session_id": session_id})
-        logger.info(f"清空长期记忆: session={session_id}, count={result.deleted_count}")
+    def clear_user(self, user_id: str) -> int:
+        """清空指定用户的所有长期记忆"""
+        result = self.collection.delete_many({"user_id": user_id})
+        logger.info(f"清空长期记忆: user={user_id}, count={result.deleted_count}")
         return result.deleted_count
 
 
@@ -280,22 +283,22 @@ def get_long_term_memory() -> LongTermMemory:
 
 if __name__ == "__main__":
     ltm = get_long_term_memory()
-    sid = "test_ltm_001"
-    ltm.clear_session(sid)
+    uid = "test_user_001"
+    ltm.clear_user(uid)
 
     # 测试保存
-    ltm.save_memory(sid, "用户喜欢简洁的回答", "preference", 8)
-    ltm.save_memory(sid, "用户的设备是 HAK180 烫金机", "device", 6)
+    ltm.save_memory(uid, "用户喜欢简洁的回答", "preference", 8)
+    ltm.save_memory(uid, "用户的设备是 HAK180 烫金机", "device", 6)
 
     # 测试加载
-    formatted = ltm.format_memories_for_prompt(sid)
+    formatted = ltm.format_memories_for_prompt(uid)
     print("格式化后的长期记忆:")
     print(formatted)
 
     # 测试提取
-    ltm.extract_and_save(sid, "我喜欢简洁回答", "好的，我会简洁回答")
+    ltm.extract_and_save(uid, "我喜欢简洁回答", "好的，我会简洁回答")
     print("\n提取后记忆:")
-    print(ltm.format_memories_for_prompt(sid))
+    print(ltm.format_memories_for_prompt(uid))
 
-    ltm.clear_session(sid)
+    ltm.clear_user(uid)
     print("\n测试完成，已清理")

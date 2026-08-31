@@ -142,19 +142,20 @@ def _make_delta_callback(task_id: str):
 
 
 @celery.task(bind=True, name="query.run_agent", max_retries=0)
-def run_agent_task(self, session_id: str, task_id: str, user_query: str, is_stream: bool = False):
+def run_agent_task(self, session_id: str, task_id: str, user_query: str, is_stream: bool = False, user_id: str = "default_user"):
     """
     Celery 任务：执行 Agent 查询流程（增强版）
-    - session_id：MongoDB 历史对话 + 长期记忆的隔离键
+    - session_id：MongoDB 历史对话的隔离键（每次新对话变化）
+    - user_id：长期记忆的隔离键（前端生成，跨会话不变）
     - task_id：Redis 任务状态隔离（每次请求唯一）
     """
-    logger.info(f"[Celery] run_agent_task 开始: session={session_id}, task={task_id}, query={user_query}")
+    logger.info(f"[Celery] run_agent_task 开始: session={session_id}, user={user_id}, task={task_id}, query={user_query}")
 
-    # 1. 加载长期记忆
+    # 1. 加载长期记忆（按 user_id 隔离，跨会话生效）
     long_term_memory = ""
     try:
         ltm = get_long_term_memory()
-        long_term_memory = ltm.format_memories_for_prompt(session_id, min_importance=3)
+        long_term_memory = ltm.format_memories_for_prompt(user_id, min_importance=3)
         if long_term_memory:
             logger.info(f"[Celery] 加载长期记忆:\n{long_term_memory}")
     except Exception as e:
@@ -167,6 +168,7 @@ def run_agent_task(self, session_id: str, task_id: str, user_query: str, is_stre
     init_state = {
         "messages": agent_messages,
         "session_id": session_id,
+        "user_id": user_id,
         "is_stream": is_stream,
         "query_intent": "",
         "rewritten_query": "",
@@ -241,8 +243,8 @@ def run_agent_task(self, session_id: str, task_id: str, user_query: str, is_stre
         # 9. 提取长期记忆（异步，不阻塞主流程）：LLM 提取 + 超量淘汰
         try:
             ltm = get_long_term_memory()
-            ltm.extract_and_save(session_id, user_query, answer)
-            ltm.prune_session(session_id)
+            ltm.extract_and_save(user_id, user_query, answer)
+            ltm.prune_user(user_id)
         except Exception as e:
             logger.error(f"[Celery] 提取长期记忆失败: {e}")
 
