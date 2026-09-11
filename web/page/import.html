@@ -133,6 +133,8 @@
 
     <script>
         const API_BASE = "http://127.0.0.1:8001";
+        // API Key 由服务端模板注入
+        const API_KEY = "{{ api_key }}"
         const uploadArea = document.getElementById("uploadArea");
         const fileInput = document.getElementById("file-input");
         const taskList = document.getElementById("taskList");
@@ -195,6 +197,9 @@
             try{
                 const res = await fetch(`${API_BASE}/upload`, {
                     method: "POST",
+                    headers: {
+                        "X-API-Key": API_KEY
+                    },
                     body: formData
                 });
                 const data = await res.json();
@@ -233,8 +238,11 @@
         // 轮询 /status/{task_id}
         async function pollTask(taskId) {
             try {
-                const res = await fetch(`${API_BASE}/status/${taskId}`);
+                const res = await fetch(`${API_BASE}/status/${taskId}`, {
+                    headers: { "X-API-Key": API_KEY }
+                });
                 const info = await res.json();
+
                 const statSpan = document.getElementById(`stat-${taskId}`);
                 const logBox = document.getElementById(`log-${taskId}`);
                 if(!statSpan) return;

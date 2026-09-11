@@ -28,11 +28,15 @@ ITEM_NAME_EXTRACT_TEMPLATE = """
    - 示例："华为平板C5和华为擎云C5(第4代)分别搭载什么操作系统？" → is_comparison: true
    - 示例："华为擎云W585支持设置BIOS启动密码吗？" → is_comparison: false
    - 示例："HAK180的工作温度范围是多少？" → is_comparison: false
+8. 请同时判断该问题是否适合联网搜索（allow_web_search）：
+   - 适合（true）：时效性信息（价格、市场价、固件版本、最新版本、新闻、评测）、知识库未覆盖的通用常识
+   - 不适合（false）：涉及内部产品参数、未公开信息、企业机密、具体型号的内部规格、操作步骤、故障排查、维护保养等知识库已覆盖内容
 
 请直接返回JSON格式结果，格式如下：
 {{
     "item_names": ["商品A完整名", "商品B完整名"],
     "rewritten_query": "关于商品A和商品B，...",
-    "is_comparison": true 或 false
+    "is_comparison": true 或 false,
+    "allow_web_search":true 或 false
 }}
 """

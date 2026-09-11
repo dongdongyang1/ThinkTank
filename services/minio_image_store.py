@@ -2,6 +2,7 @@ import logging
 import os
 import re
 from typing import List, Tuple, Dict
+from urllib.parse import quote
 from minio.deleteobjects import DeleteObject
 
 from config.minio_config import minio_config

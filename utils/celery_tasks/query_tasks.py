@@ -35,7 +35,7 @@ SUMMARIZE_TEMPLATE = """用一句话概括下面回答的核心结论（不超�
 {answer}"""
 
 # 匹配 Markdown 图片语法 ![alt](url)，提取 url（不限制扩展名，MinIO 图片 URL 都提取）
-_MD_IMAGE_PATTERN = re.compile(r'!\[.*?\]\((https?://[^\s)]+)\)', re.IGNORECASE)
+_MD_IMAGE_PATTERN = re.compile(r'!\[.*?\]\((https?://.+?\.(?:jpg|jpeg|png|gif|webp|bmp))\)', re.IGNORECASE)
 
 
 def _get_agent():
@@ -77,7 +77,9 @@ def _build_agent_messages(session_id: str, user_query: str) -> list:
             else:
                 messages.append(AIMessage(content=content))
         messages.reverse()  # 还原为时间正序
-        logger.info(f"[Celery] 加载历史对话 {len(messages)} 条, 历史区≈{used_chars // 2} tokens")
+        from utils.token_utils import estimate_tokens
+        history_tok = sum(estimate_tokens(m.content) for m in messages if hasattr(m,"content"))
+        logger.info(f"[Celery] 加载历史对话 {len(messages)} 条, 历史区≈{history_tok} tokens (字符数={used_chars})")
     except Exception as e:
         logger.error(f"[Celery] 加载历史对话失败: {e}")
 
@@ -124,6 +126,13 @@ def _extract_images_from_messages(messages: list) -> list:
         logger.info(f"[Celery] ToolMessage[{tool_msg_count}] 长度={len(content)}, 匹配到图片={len(matches)}")
         for match in matches:
             url = match.strip()
+            # 兜底：对URL路径中的中文/特殊字符做编码，处理旧数据未编码的情况
+            if url:
+                from urllib.parse import urlparse, urlunparse, quote
+                parsed = urlparse(url)
+                if parsed.path:
+                    encoded_path = quote(parsed.path, safe='/')
+                    url = urlunparse(parsed._replace(path=encoded_path))
             if url and url not in seen:
                 seen.add(url)
                 image_urls.append(url)
@@ -215,6 +224,12 @@ def run_agent_task(self, session_id: str, task_id: str, user_query: str, is_stre
         messages = full_state.get("messages", [])
         answer = messages[-1].content if messages else ""
         answer = clean_markdown(answer)
+
+        # ===== token 检测：最终 messages 峰值 =====
+        from utils.token_utils import estimate_messages_tokens, format_token_report
+        final_tok = estimate_messages_tokens(messages)
+        logger.info(format_token_report(final_tok, prefix="[Celery] 最终状态峰值 | "))
+
         loop_count = full_state.get("loop_count", 0)
         reflection_count = full_state.get("reflection_count", 0)
 
@@ -250,7 +265,7 @@ def run_agent_task(self, session_id: str, task_id: str, user_query: str, is_stre
 
         logger.info(
             f"[Celery] run_agent_task 完成: task={task_id}, "
-            f"答案长度={len(answer)}, 循环={loop_count}, 反思={reflection_count}, "
+            f"答案长度={len(answer)}, 循环={loop_count}, "
             f"图片={len(image_urls)}"
         )
         return {

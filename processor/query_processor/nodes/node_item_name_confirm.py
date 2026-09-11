@@ -53,6 +53,7 @@ class NodeItemNameConfirm(NodeBase):
         item_names = extract_res.get("item_names")
         rewritten_query = extract_res.get("rewritten_query",original_query)
         is_comparison = extract_res.get("is_comparison", False)
+        allow_web_seach = extract_res.get("allow_web_search",True)
 
         # 4.5 规则匹配兜底：LLM 漏了的商品名用关键词补（针对大象系列等不常见名称）
         item_names = self._rule_based_item_name_fallback(original_query, item_names)
@@ -61,6 +62,7 @@ class NodeItemNameConfirm(NodeBase):
         state["rewritten_query"] = rewritten_query
         state["item_names"] = item_names
         state["is_comparison"] = is_comparison
+        state["allow_web_search"] = allow_web_seach
         logger.info(f"问题类型判定 is_comparison={is_comparison}（LLM）")
 
         # 5 &6 如果有提取到商品名，进行搜索和对齐
@@ -156,6 +158,17 @@ class NodeItemNameConfirm(NodeBase):
                     or raw_comp == "True"
                     or raw_comp == 1
                     or raw_comp == "1"
+                )
+            if "allow_web_search" not in result:
+                result["allow_web_search"] = True
+            else:
+                raw_allow = result["allow_web_search"]
+                result["allow_web_search"] = (
+                    raw_allow is True
+                    or raw_allow == "true"
+                    or raw_allow == "True"
+                    or raw_allow == 1
+                    or raw_allow == "1"
                 )
 
             # 确保返回结果包含rewritten_query字段，无则复用原始查询

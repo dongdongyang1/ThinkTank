@@ -5,11 +5,13 @@ from pathlib import Path
 from typing import Optional
 
 import uvicorn
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
+from fastapi import FastAPI,HTTPException, Request, Header, Depends
 from pydantic import BaseModel, Field
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import FileResponse, StreamingResponse
+from starlette.templating import Jinja2Templates
 
+from config.settings import settings
 from processor.query_processor.logger import logger
 from utils.celery_tasks.query_tasks import run_agent_task
 from utils.mongo_history_utils import clear_history, get_recent_messages
@@ -24,29 +26,42 @@ app = FastAPI(
     description="掌柜智库查询流程API（Agent + Celery 异步版）"
 )
 
-# 2. 跨域
+async def verify_api_key(x_api_key:str=Header(None,alias="X-API-Key"),api_key:str = ""):
+    """API 鉴权：未配置 API_KEY 时跳过（开发环境），配置后强制校验"""
+    key = x_api_key or api_key
+    if settings.api_key and key != settings.api_key:
+        raise HTTPException(status_code=401,detail="Invalid API Key")
+    return key
+
+# 2. 跨域（最小权限：显式列出方法和头部，来源从配置读取）
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins.split(",") if settings.cors_origins else ["*"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET","POST","DELETE"],
+    allow_headers=["X-API-Key","Content-Type"],
 )
 
-# 3. 静态页面路由
+# 3. 静态页面路由，服务端模板注入 API Key
+templates = Jinja2Templates(directory=str(Path(__file__).absolute().parent.parent / "page"))
+
 @app.get("/chat.html")
-async def chat():
-    current_dir_parent_path = Path(__file__).absolute().parent.parent
-    html_path = current_dir_parent_path / "page" / "chat.html"
-    if not html_path.exists():
-        raise HTTPException(status_code=404, detail=f"没有查询到页面，地址为：{html_path}")
-    return FileResponse(html_path)
+async def chat(request:Request):
+    # current_dir_parent_path = Path(__file__).absolute().parent.parent
+    # html_path = current_dir_parent_path / "page" / "chat.html"
+    # if not html_path.exists():
+    #     raise HTTPException(status_code=404, detail=f"没有查询到页面，地址为：{html_path}")
+    # return FileResponse(html_path)
+    return templates.TemplateResponse("chat.html",{
+        "request":request,
+        "api_key":settings.api_key,
+    })
 
 
 class QueryRequest(BaseModel):
-    query: str = Field(..., description="查询内容")
-    session_id: Optional[str] = Field(None, description="会话ID")
-    user_id: Optional[str] = Field(None, description="用户ID（前端生成，跨会话不变，用于长期记忆）")
+    query: str = Field(..., min_length=1, max_length=2000, description="查询内容")
+    session_id: Optional[str] = Field(None, max_length=128, description="会话ID")
+    user_id: Optional[str] = Field(None, max_length=128, description="用户ID（前端生成，跨会话不变，用于长期记忆）")
     is_stream: bool = Field(False, description="是否流式返回")
 
 
@@ -125,7 +140,7 @@ async def celery_sse_generator(task_id: str, request: Request):
         await asyncio.sleep(0.1)
 
 
-@app.post("/query")
+@app.post("/query",dependencies=[Depends(verify_api_key)])
 async def query(request: QueryRequest):
     """
     查询接口：提交 Celery 异步任务，立即返回 session_id + task_id
@@ -176,7 +191,7 @@ async def query(request: QueryRequest):
         raise HTTPException(status_code=504, detail="任务执行超时（超过5分钟）")
 
 
-@app.get("/stream/{task_id}")
+@app.get("/stream/{task_id}",dependencies=[Depends(verify_api_key)])
 async def stream(task_id: str, request: Request):
     """SSE 实时返回结果（轮询 Redis，按 task_id 隔离）"""
     logger.info(f"SSE 连接建立: task={task_id}")
@@ -192,13 +207,13 @@ async def stream(task_id: str, request: Request):
 
 
 # 历史会话管理
-@app.delete("/history/{session_id}")
+@app.delete("/history/{session_id}",dependencies=[Depends(verify_api_key)])
 async def clear_chat_history(session_id: str):
     count = await asyncio.to_thread(clear_history, session_id)
     return {"message": "历史会话已清空", "deleted_count": count}
 
 
-@app.get("/history/{session_id}")
+@app.get("/history/{session_id}",dependencies=[Depends(verify_api_key)])
 async def history(session_id: str, limit: int = 50):
     try:
         # 查看完整历史接口不限制时间窗口（max_age_hours=None），方便排查问题

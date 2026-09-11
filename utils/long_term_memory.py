@@ -15,7 +15,14 @@ from pymongo import MongoClient, ASCENDING
 load_dotenv()
 
 logger = logging.getLogger(__name__)
+# 偏好子类型：只对 memory_type=preference 有效，用于细分覆盖范围
+PREF_SUBTYPE_STYLE = "style"      # 回答风格：简洁/详细、正式/口语、语言等
+PREF_SUBTYPE_CONTENT = "content"  # 内容要求：配图、步骤、参数表、引用来源等
+PREF_SUBTYPE_OTHER = "other"      # 其他偏好
+PREF_SUBTYPES = {PREF_SUBTYPE_STYLE, PREF_SUBTYPE_CONTENT, PREF_SUBTYPE_OTHER}
 
+# 矛盾检测时最多检测的旧偏好条数（防止旧偏好太多时 LLM 调用过多）
+MAX_CONFLICT_CHECK_PREFS = 10
 
 # LLM 记忆提取提示词：通用识别 + 短句压缩 + 类型/重要性标注，一步完成
 LLTM_EXTRACT_TEMPLATE = """你是长期记忆提取器，根据对话提取值得跨会话记住的用户信息。
@@ -24,15 +31,18 @@ LLTM_EXTRACT_TEMPLATE = """你是长期记忆提取器，根据对话提取值�
 1. 只提取跨会话有价值的信息：用户偏好、重要事实、涉及的产品/设备型号、未完成事项
 2. 每条记忆必须是简短短句（不超过30字），语义精炼，去掉口语和冗余
 3. 类型取值：preference(偏好) / fact(事实) / device(设备) / history(重要历史)
-4. 重要性1-10，越高越重要；用户明确表达的偏好给7以上，纯提及的设备给5左右
-5. 无值得记住的信息时返回空数组
+4. 如果类型是 preference，必须同时给出 preference_subtype（偏好子类型）：
+   - style：回答风格相关（简洁/详细、正式/口语、用中文/英文、语气等）
+   - content：内容要求相关（要配图、要分步骤、要参数表、要引用来源、要标注型号等）
+   - other：不属于以上两类的偏好
+5. fact/device/history 类型不需要 preference_subtype 字段
 6. 不要提取一次性问答的普通内容；设备型号无论是否常见、是否是新型号都要提取
 
 用户提问：{user_query}
 助手回答：{assistant_answer}
 
 直接返回JSON数组，不要输出其他任何内容：
-[{{"content": "简短短句", "type": "preference", "importance": 7}}]
+[{{"content": "简短短句", "type": "preference", "preference_subtype": "style", "importance": 7}}]
 """
 
 
@@ -59,7 +69,8 @@ class LongTermMemory:
         memory_type: str = "fact",
         importance: int = 5,
         metadata: Optional[Dict] = None,
-    ) -> str:
+        preference_subtype: str = PREF_SUBTYPE_OTHER,
+    ) ->str:
         """
         保存一条长期记忆（内容哈希去重：同 user + 同内容 → 更新而非重复插入）
         :param user_id: 用户标识（前端生成，跨会话不变）
@@ -73,15 +84,35 @@ class LongTermMemory:
         content_hash = hashlib.md5(content.encode("utf-8")).hexdigest()
         now = datetime.now().timestamp()
 
-        # 偏好类记忆软覆盖：新偏好存入前，把同 user 所有旧偏好的 importance 降到 1（低于加载阈值 min_importance=3）
-        # 解决"喜欢简洁回答"和"喜欢详细回答"等矛盾偏好同时注入 prompt 的问题
-        # device/fact/history 类型不处理（用户可能有多个设备、多个事实，互不冲突）
+        # 偏好类记忆精准覆盖：只降级「同子类型 + 真正矛盾」的旧偏好
+        # 1. 先按子类型粗筛：不同子类型的偏好天然不冲突（如风格偏好 vs 内容要求）
+        # 2. 同子类型内再用 LLM 精筛：只降级和新偏好矛盾的旧偏好
+        # device/fact/history 类型不处理
         if memory_type == "preference":
-            self.collection.update_many(
-                {"user_id": user_id, "memory_type": "preference"},
-                {"$set": {"importance": 1}}
+            #规范化子类型
+            sub = preference_subtype if preference_subtype in PREF_SUBTYPES else PREF_SUBTYPE_OTHER
+            # 查询同子类型的旧偏好（按时间倒序，只取最近的 N 条做检测）
+            old_prefs = list(
+                self.collection.find({
+                    "user_id" : user_id,
+                    "memory_type" : "preference",
+                    "preference_subtype" : sub,
+                }).sort("created_at",-1).limit(MAX_CONFLICT_CHECK_PREFS)
             )
-            logger.info(f"长期记忆偏好软覆盖: 已将同 user 所有旧偏好降级至 importance=1")
+            downgraded = 0
+            for old in old_prefs:
+                old_content = old.get("content","")
+                # 快速判断：内容完全相同视为重复，直接降级
+                if old_content.strip()==content.strip():
+                    self.collection.update_one({"_id":old["_id"]},{"$set":{"importance":1}})
+                    downgraded+=1
+                    continue
+                # LLM 矛盾检测：只降级真正矛盾的旧偏好
+                if self.is_preference_conflict(old_content,content):
+                    self.collection.update_one({"-id":old["_id"]},{"$set":{"importance":1}})
+                    downgraded+=1
+                    logger.info(f"偏好矛盾降级: 旧='{old_content[:40]}' 新='{content[:40]}'")
+                    logger.info(f"长期记忆偏好精准覆盖: 子类型={sub}, 检测{len(old_prefs)}条旧偏好, 降级{downgraded}条")
 
         # 去重：同 user + 同内容哈希已存在 → 刷新时间并提升重要性，避免重复堆叠
         existing = self.collection.find_one({
@@ -108,9 +139,36 @@ class LongTermMemory:
             "metadata": metadata or {},
             "created_at": now,
         }
+        # 只对 preference 类型存储子类型
+        if memory_type=="preference":
+            doc["preference_subtype"] = preference_subtype if preference_subtype in PREF_SUBTYPES else PREF_SUBTYPE_OTHER
         result = self.collection.insert_one(doc)
         logger.info(f"保存长期记忆: type={memory_type}, importance={importance}, content={content[:50]}")
         return str(result.inserted_id)
+
+    def is_preference_conflict(self,old_content:str,new_content:str)->bool:
+        """
+        用 LLM 判断两条偏好是否矛盾（无法同时满足）。
+        失败时保守返回 False（不降级），避免误伤。
+        """
+        try:
+            import  json
+            from utils.llm_utils import get_llm_client
+            from config.lm_config import lm_config
+            from langchain_core.messages import HumanMessage
+            llm = get_llm_client(model=lm_config.item_model,json_mode=True)
+            prompt = f"""判断以下两条用户偏好是否互相矛盾（无法同时满足）。
+            只返回 JSON，不要输出其他内容：{{"conflict": true}} 或 {{"conflict": false}}
+
+            旧偏好：{old_content}
+            新偏好：{new_content}
+            """
+            resp = llm.invoke([HumanMessage(content=prompt)])
+            data = json.loads(resp.content)
+            return bool(data.get("conflict",False))
+        except Exception as  e:
+            logger.warning(f"偏好矛盾检测失败，保守返回不矛盾: {e}")
+            return False
 
     def get_memories(
         self,
@@ -168,9 +226,18 @@ class LongTermMemory:
             "device": "设备信息",
             "history": "历史记录",
         }
+        subtype_labels = {
+            PREF_SUBTYPE_STYLE: "风格",
+            PREF_SUBTYPE_CONTENT: "内容",
+            PREF_SUBTYPE_OTHER: "偏好",
+        }
         for m in memories:
             mtype = m.get("memory_type", "fact")
-            label = type_labels.get(mtype, mtype)
+            if mtype=="preference":
+                sub = mtype.get("preference_subtype",PREF_SUBTYPE_OTHER)
+                label = f"用户偏好-{subtype_labels.get(sub, '偏好')}"
+            else:
+                label = type_labels.get(mtype, mtype)
             lines.append(f"- [{label}] {m.get('content', '')}")
         return "\n".join(lines)
 
@@ -206,7 +273,8 @@ class LongTermMemory:
                 importance = int(m.get("importance", 5))
             except (TypeError, ValueError):
                 importance = 5
-            self.save_memory(user_id, content, mtype, importance)
+            pre_subtype = int(m.get("preference_subtype",PREF_SUBTYPE_OTHER))
+            self.save_memory(user_id, content, mtype, importance,preference_subtype=pre_subtype)
             saved += 1
         if saved > 0:
             logger.info(f"从对话提取并保存了 {saved} 条长期记忆")

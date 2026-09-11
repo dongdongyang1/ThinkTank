@@ -4,11 +4,12 @@ import time
 from datetime import datetime
 
 from bson import ObjectId
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from typing import List,Dict,Any
 
-load_dotenv()
+_dotenv_path = find_dotenv()
+load_dotenv(_dotenv_path, override=True)
 
 class HistoryMongoTool:
     """
@@ -38,6 +39,9 @@ class HistoryMongoTool:
             # 索引规则：session_id升序 + ts降序，适配"按会话查最新记录"的核心查询场景
             # create_index自带幂等性：索引已存在时不会重复创建，无需额外判断
             self.chat_message.create_index([("session_id",1),("ts",-1)])
+
+            # TTL 索引：超过 30 天的对话历史自动删除（30 * 24 * 3600 秒）
+            self.chat_message.create_index([("ts", 1)], expireAfterSeconds=2592000)
 
             # 记录成功日志，确认数据库连接和初始化完成
             logging.info(f"Successfully connected to MongoDB: {self.db_name}")

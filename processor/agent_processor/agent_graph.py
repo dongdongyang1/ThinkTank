@@ -7,6 +7,7 @@ from langgraph.constants import END
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
 
+from config.settings import settings
 from processor.agent_processor.agent_state import AgentState
 from processor.agent_processor.prompt.react_prompt import build_system_prompt, MAX_LOOPS
 from processor.agent_processor.tools.kb_search_tool import kb_search
@@ -56,6 +57,14 @@ class KBQueryAgent:
         # 构建系统提示词（注入长期记忆）
         system_prompt = build_system_prompt(state.get("long_term_memory", ""))
         messages = [SystemMessage(content=system_prompt)] + list(state["messages"])
+
+        # ===== token 检测 =====
+        from utils.token_utils import estimate_messages_tokens, format_token_report
+        tok_stats = estimate_messages_tokens(messages)
+        logger.info(format_token_report(tok_stats, prefix=f"[agent node] 第{loop_count}轮输入 | "))
+        if tok_stats["total_tokens"] > settings.AGENT_INPUT_WARN_TOKENS:
+            logger.warning(
+                f"[agent node] 第{loop_count}轮输入超过{settings.AGENT_INPUT_WARN_TOKENS}token({tok_stats['total_tokens']})，ToolMessage累积={sum(t['tokens'] for t in tok_stats['tool_details'])}")
 
         # 达到循环上限时，强制不调用工具（在 prompt 中追加指令）
         if loop_count >= MAX_LOOPS:

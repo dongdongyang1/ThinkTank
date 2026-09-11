@@ -7,10 +7,12 @@ from typing import List, Dict, Any
 
 import uvicorn
 from starlette.responses import FileResponse
-from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi import FastAPI, HTTPException, File, UploadFile, Header, Depends,Request
 from starlette.middleware.cors import CORSMiddleware
+from starlette.templating import Jinja2Templates
 
 from config.minio_config import minio_config
+from config.settings import settings
 from processor.query_processor.logger import logger
 from utils.celery_tasks import kb_import_task
 from utils.minio_utils import get_minio_client
@@ -56,34 +58,44 @@ app = FastAPI(
     title="知识库问答-导入API",
     description="此文档是知识库问答导入流程的API接口说明"
 )
-
+async def verify_api_key(x_api_key: str = Header(None,alias ="X-API-Key")):
+    """API 鉴权：未配置 API_KEY 时跳过（开发环境），配置后强制校验"""
+    if settings.api_key and x_api_key !=settings.api_key:
+        raise HTTPException(status_code=401,detail="无效的API Key")
+    return x_api_key
 # 2. 跨域
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 允许的源
+    allow_origins=settings.cors_origins.split(",") if settings.cors_origins else ["*"],  # 允许的源
     allow_credentials=True,  # 允许携带cookie
-    allow_methods=["*"],  # 允许的请求方法
-    allow_headers=["*"],  # 允许的请求头
+    allow_methods=["GET","POST"],  # 允许的请求方法
+    allow_headers=["X-API-Key","Content-Type"],  # 允许的请求头
 )
 
-# 3. 静态页面路由：返回文件导入前端页面
+# 3. 静态页面路由：服务端模板注入 API Key
 # 访问地址：http://localhost:8001/import.html
+templates = Jinja2Templates(directory=Path(__file__).absolute().parent.parent/ "page")
+
 @app.get("/import.html") #对外访问地址
-async def get_import_page():
+async def get_import_page(request:Request):
     # 拼接HTML文件绝对路径
-    current_dir_parent_path = Path(__file__).absolute().parent.parent
-    html_path = current_dir_parent_path / "page" / "import.html"
+    # current_dir_parent_path = Path(__file__).absolute().parent.parent
+    # html_path = current_dir_parent_path / "page" / "import.html"
 
     # 如果不存在，抛出404异常
-    if not html_path.exists():
-        raise HTTPException(status_code=404, detail=f"没有查询到页面，地址为：{html_path}")
-    return FileResponse(html_path)
+    # if not html_path.exists():
+    #     raise HTTPException(status_code=404, detail=f"没有查询到页面，地址为：{html_path}")
+    # return FileResponse(html_path)
+    return templates.TemplateResponse("import.html",{
+        "request":request,
+        "api_key":settings.api_key,
+    })
 
 
 # 4. 核心接口：文件上传接口
 # 支持多文件上传，核心流程：接收文件 → 本地保存 → MinIO上传 → 启动后台任务
 # 访问地址：http://localhost:8001/upload （POST请求，form-data格式传参）
-@app.post("/upload",summary="文件上传接口",description="支持多文件批量上传，自动触发知识库导入全流程")
+@app.post("/upload",summary="文件上传接口",description="支持多文件批量上传，自动触发知识库导入全流程",dependencies=[Depends(verify_api_key)])
 async def upload_files(files:List[UploadFile] = File(...)):
     """
        文件上传核心接口
@@ -97,6 +109,9 @@ async def upload_files(files:List[UploadFile] = File(...)):
        :param files: 前端上传的文件列表（form-data格式）
        :return: 包含上传结果和所有任务ID的JSON响应
     """
+    # 限制单次上传文件数量，防止批量上传打满磁盘
+    if len(files) > 10:
+        raise HTTPException(status_code=400, detail="单次最多上传10个文件")
     # 1. 构建本地存储根目录：项目根目录/doc/YYYYMMDD（按日期分层，方便管理）
     data_based_root_dir = os.getenv("DATA_BASED_ROOT_DIR")
     if not data_based_root_dir:
@@ -175,7 +190,7 @@ async def upload_files(files:List[UploadFile] = File(...)):
 # 5. 核心接口：任务状态查询接口
 # 前端轮询此接口获取单个任务的处理进度和状态
 # 访问地址：http://localhost:8001/status/{task_id} （GET请求）
-@app.get("/status/{task_id}",summary="任务状态查询",description="根据TaskID查询单个文件的处理进度和全局状态")
+@app.get("/status/{task_id}",summary="任务状态查询",description="根据TaskID查询单个文件的处理进度和全局状态",dependencies=[Depends(verify_api_key)])
 async def get_task_progress(task_id:str):
     """
     任务状态查询接口

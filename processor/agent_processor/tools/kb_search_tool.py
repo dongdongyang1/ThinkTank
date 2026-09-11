@@ -3,6 +3,7 @@ import uuid
 
 from langchain_core.tools import tool
 
+from config.settings import settings
 from processor.query_processor.logger import logger
 from processor.query_processor.nodes.node_item_name_confirm import NodeItemNameConfirm
 from processor.query_processor.nodes.node_rerank import NodeRerank
@@ -168,7 +169,12 @@ def kb_search(query : str) -> str:
 
         # 5. 格式化结果
         reranked_docs = temp_state.get("reranked_docs", [])
+
+        # 从意图识别结果中取出联网权限标记
+        allow_web_search = temp_state.get("allow_web_search",True)
         if not reranked_docs:
+            if not allow_web_search:
+                return "未检索到相关文档。当前问题涉及内部产品信息，不允许联网搜索，请调整问题后重试。"
             return "未检索到相关文档。建议尝试其他关键词，或使用 web_search 联网搜索。"
 
         formatted_parts = []
@@ -185,7 +191,20 @@ def kb_search(query : str) -> str:
             formatted_parts.append(f"[文档{idx}] 标题: {title} | 来源: {source} | 商品: {item_name} | 相关度: {score:.4f}\n"
                 f"内容: {content}")
         result = "\n\n---\n\n".join(formatted_parts)
-        logger.info(f"[search_kb tool] 检索完成，返回 {len(reranked_docs)} 条文档")
+
+        # ===== token 检测 =====
+        from utils.token_utils import estimate_tokens
+        result_tok = estimate_tokens(result)
+        doc_toks = [estimate_tokens(doc.get("content", "")) for doc in reranked_docs]
+
+        web_flag = f"【内部标记】allow_web_search={'true' if allow_web_search else 'false'}"
+        result = f"{web_flag}\n\n{result}"
+
+        logger.info(f"[search_kb tool] 检索完成，返回 {len(reranked_docs)} 条文档,总token={result_tok}，各文档token={doc_toks},allow_web_search={allow_web_search}")
+
+        if result_tok > settings.KB_SEARCH_WARN_TOKENS:
+            logger.warning(
+                f"[search_kb tool] 单次检索返回超过{settings.KB_SEARCH_WARN_TOKENS}token({result_tok})，文档数={len(reranked_docs)}")
         return result
     except Exception as e:
         logger.error(f"[search_kb tool] 执行失败: {e}", exc_info=True)

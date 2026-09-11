@@ -4,10 +4,15 @@ from pathlib import Path
 
 from celery import Celery
 
+from config.settings import settings
+
 BASE_DIR = Path(__file__).parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
-redis_url = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
+for key in ("CELERY_BROKER_URL", "BROKER_URL", "CELERY_RESULT_BACKEND", "RESULT_BACKEND"):
+    os.environ.pop(key,None)
+redis_url = settings.redis_url
+#redis_url = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
 
 celery = Celery(
     "kb_import",

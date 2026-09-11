@@ -69,6 +69,15 @@ class AppSettings(BaseSettings):
     mineru_max_pages: int = 200
     mineru_timeout_seconds: int = 1200
 
+    # ========== 安全配置 ==========
+    api_key: str = Field(default="",alias="API_KEY")  # API鉴权密钥，为空则不启用鉴权
+    cors_origins: str = Field(default="",alias="CORS_ORIGINS") # 允许跨域的域名，逗号分隔
+
+
+    # ========== token 告警阈值 ==========
+    AGENT_INPUT_WARN_TOKENS: int = 8000
+    KB_SEARCH_WARN_TOKENS: int = 3000
+
     def validate_required(self) -> list[str]:
         """校验必填配置项，返回缺失字段列表"""
         required = {
