@@ -52,8 +52,7 @@ async def chat(request:Request):
     # if not html_path.exists():
     #     raise HTTPException(status_code=404, detail=f"没有查询到页面，地址为：{html_path}")
     # return FileResponse(html_path)
-    return templates.TemplateResponse("chat.html",{
-        "request":request,
+    return templates.TemplateResponse(request, "chat.html", {
         "api_key":settings.api_key,
     })
 
@@ -116,10 +115,12 @@ async def celery_sse_generator(task_id: str, request: Request):
             remaining, delta_index = get_new_deltas(task_id, delta_index)
             for delta in remaining:
                 yield _sse_format("delta", {"delta": delta})
+            retrieved_contexts = get_task_result(task_id, "retrieved_contexts", [])
             yield _sse_format("final", {
                 "answer": answer,
                 "status": "completed",
                 "image_urls": image_urls,
+                "retrieved_contexts": retrieved_contexts,
             })
             logger.info(f"SSE 任务完成: task={task_id}, 答案长度={len(answer)}")
             break
@@ -174,12 +175,14 @@ async def query(request: QueryRequest):
             if status == TASK_STATUS_COMPLETED:
                 answer = get_task_result(task_id, "answer", "")
                 image_urls = get_task_result(task_id, "image_urls", [])
+                retrieved_contexts = get_task_result(task_id, "retrieved_contexts", [])
                 return {
                     "message": "处理完成！",
                     "session_id": session_id,
                     "task_id": task_id,
                     "answer": answer,
                     "image_urls": image_urls,
+                    "retrieved_contexts": retrieved_contexts,
                     "done_list": [],
                 }
             if status == TASK_STATUS_FAILED:

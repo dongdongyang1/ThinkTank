@@ -57,7 +57,7 @@ class NodeSearchEmbedding(NodeBase):
                 dense_vector = dense_vec,
                 sparse_vector = sparse_vec,
                 expr=expr,
-                limit=15      # 底层检索返回数量（从10提高到15，预留更多结果做重排序，避免P3000等长尾商品被截断）
+                limit=30      # 底层检索返回数量（从20提高到30，预留更多结果做重排序，避免P3000等长尾商品被截断）
             )
 
             # 底层检索返回数量（后续会再过滤为5，预留更多结果做重排序）

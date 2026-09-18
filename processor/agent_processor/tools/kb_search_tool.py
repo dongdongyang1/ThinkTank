@@ -14,9 +14,12 @@ from utils.mongo_history_utils import clear_history
 
 
 def _extract_model_keyword(name: str) -> str:
-    """从商品名提取型号标识，如 '华为擎云W585X' -> 'W585X'，无型号返回空串"""
-    m = re.search(r"[A-Za-z]+[\-]?\d+[A-Za-z]*", name)
-    return m.group() if m else ""
+    """
+    从商品名提取最具体最长型号标识，如 '华为擎云W585X' -> 'W585X'，无型号返回空串
+    'H3C LA2608室内无线网关' -> 'LA2608'（而非'H3C'）
+    """
+    toks = sorted(set(re.findall(r"[A-Za-z]+[\-]?\d+[A-Za-z]*",name)),key=len,reverse=True)
+    return toks[0] if toks else ""
 
 
 def _isolate_single_model(query: str, item_names: list, is_comparison: bool = False,
@@ -74,6 +77,77 @@ def _isolate_single_model(query: str, item_names: list, is_comparison: bool = Fa
     logger.info(f"[kb_search] 未匹配到 query 型号，保留原 item_names: {item_names}")
     return item_names
 
+def _search_for_comparison(query:str,item_names:list) ->str:
+    """
+    对比问题专用：拆成两个子问题，分别检索，按型号分组返回
+    """
+    if len(item_names)<2:
+        return None  # 不是对比问题，走原来的流程
+
+    # 拆成两个子问题
+    results_by_item = {}
+    for item_name in item_names:
+        # 构造子查询：只问这个型号的问题
+        sub_query = f"{item_name} {query}"
+
+        # 执行完整检索流程（产品名确认 → HyDE → 向量检索 → RRF → Rerank）
+        temp_state = {
+            "original_query": sub_query,
+            "session_id": f"compare_{uuid.uuid4().hex[:8]}",
+            "is_stream": False,
+            "embedding_chunks": [],
+            "hyde_embedding_chunks": [],
+            "web_search_docs": [],
+            "rrf_chunks": [],
+            "reranked_docs": [],
+            "item_names": [item_name],
+            "rewritten_query": sub_query,
+            "history": [],
+            "answer": "",
+            "message_id": "",
+            "prompt": "",
+            "is_summary": False,
+        }
+
+        #HyDE
+        hyde_node = NodeSearchHyde()
+        temp_state.update(hyde_node(temp_state))
+
+        #向量检索
+        emb_node = NodeSearchEmbedding()
+        temp_state.update(emb_node(temp_state))
+
+        #RRF
+        rrf_node = NodeRrf()
+        temp_state.update(rrf_node(temp_state))
+
+        #Rerank
+        rerank_node = NodeRerank()
+        temp_state.update(rerank_node(temp_state))
+
+        results_by_item[item_name] = temp_state.get("reranked_docs",[])
+
+    # 按型号分组格式化
+    parts = []
+    for item_name,docs in results_by_item.items():
+        parts.append(f"【{item_name}】的文档")
+        for idx,doc in enumerate(docs[:5],start=1):
+            parts.append(f"[文档{idx}] 标题: {doc.get('title', '')}\n内容: {doc.get('content', '')}")
+        parts.append("")
+    return "\n\n---\n\n".join(parts)
+def _balance_docs_by_item(docs, per_item=3, max_total=8):
+    """按商品平衡截断：每个 item_name 各保留分数最高的 per_item 条，防止某产品占满全部名额"""
+    groups = {}
+    for d in docs:
+        groups.setdefault(d.get("item_name", ""), []).append(d)
+    picked = []
+
+    for g in groups.values():
+        g.sort(key=lambda x: x.get("score") or 0, reverse=True)
+        picked.extend(g[:per_item])
+    picked.sort(key=lambda x: x.get("score") or 0, reverse=True)
+    return picked[:max_total]
+
 
 @tool
 def kb_search(query : str) -> str:
@@ -120,14 +194,38 @@ def kb_search(query : str) -> str:
             "answer": "",
             "message_id": "",
             "prompt": "",
+            "is_summary": False,
         }
 
         # 1. 物品名确认（核心作用：提取 item_names 用于检索过滤）
         item_node = NodeItemNameConfirm()
         temp_state.update(item_node(temp_state))
+
+        #关键词兜底
+        comparison_markers = ["和", "与", "对比", "区别", "分别", "哪个", "不同", "vs", "versus", "还是"]
+        is_comparison_by_keyword = any(m in query for m in comparison_markers)
+
+        # 只要 LLM 说对比问题，或者 query 里有对比关键词，且 item_names >= 2，就算对比问题
+        if (temp_state.get("is_comparison") or is_comparison_by_keyword) and len(temp_state.get("item_names", [])) >= 2:
+            logger.info(
+                f"[kb_search] 检测到对比问题，拆分为多个子问题分别检索 (LLM={temp_state.get('is_comparison')}, 关键词={is_comparison_by_keyword})")
+            comparison_result = _search_for_comparison(
+                query,
+                temp_state["item_names"]
+            )
+            if comparison_result:
+                return comparison_result
+
         # 清理临时 session 的历史记录：NodeItemNameConfirm 内部会写 MongoDB，
         # 但 kb_search 用的是临时 session_id，这些记录永远不会被读取，直接删掉避免垃圾数据累积
         clear_history(temp_session_id)
+
+        #拒答/确认短路：NodeItemNameConfirm 分支B(候选反问)/分支C(产品未找到) 已给出答复
+        if temp_state.get("answer"):
+            if not temp_state.get("item_names") and settings.UNKNOWN_PRODUCT_BLOCK_WEB:
+                # 分支C + 评估模式：禁止 agent 转 web_search 硬答
+                return f"【内部标记】allow_web_search=false\n\n{temp_state['answer']}"
+            return temp_state["answer"]
 
         # 单型号问题隔离：防止宽泛关键词（如"擎云"）把同一系列多个易混淆型号都带进来，
         # 导致检索混入其他型号、Agent 把别的型号功能安到问题型号上。
@@ -146,9 +244,13 @@ def kb_search(query : str) -> str:
         # 强制重置查询字段：NodeItemNameConfirm 可能把 original_query/rewritten_query 搞丢或设为 None，
         # 导致后续 HyDE 和 Rerank 节点 query 为空，API 报 "query should not be empty"。
         # 这里直接用传入的 query，不依赖上游节点的改写结果。
+        # temp_state["original_query"] = query
+        # temp_state["rewritten_query"] = query
+        #logger.info(f"[kb_search] 重置查询字段: original_query={query[:50]}, rewritten_query={query[:50]}")
+        rw = (temp_state.get("rewritten_query") or "").strip()
         temp_state["original_query"] = query
-        temp_state["rewritten_query"] = query
-        logger.info(f"[kb_search] 重置查询字段: original_query={query[:50]}, rewritten_query={query[:50]}")
+        temp_state["rewritten_query"] = rw if len(rw) >= 4 else query
+        logger.info(f"[kb_search] 查询字段: original={query[:50]}, rewritten={temp_state['rewritten_query'][:50]}")
 
         # 2. 两路并行检索（embedding + HyDE)
         # 注意：必须用 update 合并结果，不能直接赋值替换！
@@ -166,6 +268,10 @@ def kb_search(query : str) -> str:
         # 4. Rerank重排
         rerank_node = NodeRerank()
         temp_state.update(rerank_node(temp_state))
+        if temp_state.get("is_comparison") or len(temp_state.get("item_names", [])) >= 2:
+            temp_state["reranked_docs"] = _balance_docs_by_item(temp_state.get("reranked_docs", []))
+
+
 
         # 5. 格式化结果
         reranked_docs = temp_state.get("reranked_docs", [])

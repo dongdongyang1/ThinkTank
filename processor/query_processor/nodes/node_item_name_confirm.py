@@ -53,6 +53,7 @@ class NodeItemNameConfirm(NodeBase):
         item_names = extract_res.get("item_names")
         rewritten_query = extract_res.get("rewritten_query",original_query)
         is_comparison = extract_res.get("is_comparison", False)
+        is_summary = extract_res.get("is_summary",False)
         allow_web_seach = extract_res.get("allow_web_search",True)
 
         # 4.5 规则匹配兜底：LLM 漏了的商品名用关键词补（针对大象系列等不常见名称）
@@ -62,6 +63,7 @@ class NodeItemNameConfirm(NodeBase):
         state["rewritten_query"] = rewritten_query
         state["item_names"] = item_names
         state["is_comparison"] = is_comparison
+        state["is_summary"] = is_summary
         state["allow_web_search"] = allow_web_seach
         logger.info(f"问题类型判定 is_comparison={is_comparison}（LLM）")
 
@@ -159,6 +161,21 @@ class NodeItemNameConfirm(NodeBase):
                     or raw_comp == 1
                     or raw_comp == "1"
                 )
+
+            # 确保返回结果包含is_summary字段，无则默认为False
+            if "is_summary" not in result:
+                result["is_summary"] = False
+            else:
+                # 规范化布尔值（LLM 可能返回字符串 "true"/"false" 或 1/0）
+                raw_comp = result["is_summary"]
+                result["is_summary"] = (
+                        raw_comp is True
+                        or raw_comp == "true"
+                        or raw_comp == "True"
+                        or raw_comp == 1
+                        or raw_comp == "1"
+                )
+
             if "allow_web_search" not in result:
                 result["allow_web_search"] = True
             else:
@@ -256,12 +273,10 @@ class NodeItemNameConfirm(NodeBase):
         # 不用截断词（前6/前4位），避免误匹配
         # 代价：无数字型号的商品名（如"大象系列"）不参与规则兜底，依赖 LLM 提取
         keywords = []
-        model_match = re.search(r'(?:[A-Za-z0-9.])+([\-][a-zA-Z0-9]+)*', item_name)
-        if model_match:
-            keywords.append(model_match.group())
-
-        return list(set(kw for kw in keywords if kw and len(kw) >= 2))
-
+        for m in re.findall(r"[A-Za-z]+(?:[\-]?\d+[A-Za-z]*)?", item_name):
+            # 过滤短品牌词（如"H3C"），保留型号级 token 和长品牌词（如"HUAWEI"/"Brother"）
+            if len(m) >= 6 or sum(c.isdigit() for c in m) >= 2:
+                keywords.append(m)
     def _step_5_vectorize_and_query(self, item_names)->List[Dict]:
         """
         把分析出的item_names逐个向量化（BGEM3模型），并在Milvus向量数据库(kb_item_names)中执行混合搜索，获取匹配评分
@@ -433,6 +448,11 @@ class NodeItemNameConfirm(NodeBase):
         if confirmed:
             # 收集所有历史消息ID（高置信度确认分支，直接覆盖已有错误关联）
             # 原逻辑只更新 item_names 为空的消息，导致之前错误关联的商品名永远无法修正
+            #对比类把候选(options)也纳入——漏掉一个产品比多几个候选严重得多
+            if options and state.get("is_comparison"):
+                confirmed = list(set(confirmed + options))
+                logger.info(f"对比类问题，候选商品名并入确认: {options}")
+
             ids_to_update = []
             for msg in history:
                 mid = msg.get("_id")

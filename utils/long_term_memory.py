@@ -109,7 +109,7 @@ class LongTermMemory:
                     continue
                 # LLM 矛盾检测：只降级真正矛盾的旧偏好
                 if self.is_preference_conflict(old_content,content):
-                    self.collection.update_one({"-id":old["_id"]},{"$set":{"importance":1}})
+                    self.collection.update_one({"_id": old["_id"]},{"$set":{"importance":1}})
                     downgraded+=1
                     logger.info(f"偏好矛盾降级: 旧='{old_content[:40]}' 新='{content[:40]}'")
                     logger.info(f"长期记忆偏好精准覆盖: 子类型={sub}, 检测{len(old_prefs)}条旧偏好, 降级{downgraded}条")
@@ -234,7 +234,7 @@ class LongTermMemory:
         for m in memories:
             mtype = m.get("memory_type", "fact")
             if mtype=="preference":
-                sub = mtype.get("preference_subtype",PREF_SUBTYPE_OTHER)
+                sub = m.get("preference_subtype",PREF_SUBTYPE_OTHER)
                 label = f"用户偏好-{subtype_labels.get(sub, '偏好')}"
             else:
                 label = type_labels.get(mtype, mtype)
@@ -273,7 +273,9 @@ class LongTermMemory:
                 importance = int(m.get("importance", 5))
             except (TypeError, ValueError):
                 importance = 5
-            pre_subtype = int(m.get("preference_subtype",PREF_SUBTYPE_OTHER))
+            pre_subtype = str(m.get("preference_subtype", PREF_SUBTYPE_OTHER))
+            if pre_subtype not in PREF_SUBTYPES:
+                pre_subtype = PREF_SUBTYPE_OTHER
             self.save_memory(user_id, content, mtype, importance,preference_subtype=pre_subtype)
             saved += 1
         if saved > 0:

@@ -1,0 +1,66 @@
+# ==================== 全局配置 ====================
+x-common-env: &common-env
+  env_file:
+    - .env.docker
+  volumes:
+    - ./models:/models            # 模型文件（BGE-M3 等）
+    - D:\modelscope_cache:/models/modelscope_cache  # ModelScope 模型缓存（BGE-M3实际在这）
+    - ./data:/data                # 数据根目录
+    - ./output:/output            # 输出目录
+    - ./temp-files:/app/temp-files  # 临时文件
+  depends_on:
+    redis:
+      condition: service_started
+
+services:
+  # ==================== Redis（Celery broker + 任务状态） ====================
+  redis:
+    image: redis:7-alpine
+    container_name: thinktank-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+
+  # ==================== 查询 API（FastAPI，端口 8002） ====================
+  query-api:
+    build: .
+    container_name: thinktank-query-api
+    restart: unless-stopped
+    <<: *common-env
+    command: uvicorn web.api.query_service:app --host 0.0.0.0 --port 8002
+    ports:
+      - "8002:8002"
+
+  # ==================== 导入 API（FastAPI，端口 8001） ====================
+  import-api:
+    build: .
+    container_name: thinktank-import-api
+    restart: unless-stopped
+    <<: *common-env
+    command: uvicorn web.api.import_service:app --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
+
+  # ==================== Celery Worker（异步任务，需要 GPU） ====================
+  celery-worker:
+    build: .
+    container_name: thinktank-celery-worker
+    restart: unless-stopped
+    <<: *common-env
+    command: celery -A config.celery_config.celery worker --loglevel=info --pool=solo
+    # GPU 支持（需要宿主机安装 nvidia-container-toolkit）
+    # 如果没有 GPU，删掉下面的 deploy 段，并在 .env.docker 里设 BGE_DEVICE=cpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+# ==================== 数据卷（持久化） ====================
+volumes:
+  redis-data:

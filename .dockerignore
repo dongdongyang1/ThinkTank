@@ -1,0 +1,49 @@
+# ==================== 大文件/模型（不打进镜像，通过 volume 挂载） ====================
+models/
+modelscope_cache/
+huggingface_cache/
+*.safetensors
+*.bin
+*.pt
+*.pth
+
+# ==================== 数据/输出（运行时生成，不打进镜像） ====================
+data/
+output/
+temp-files/
+temp/
+*.pdf
+*.md
+!requirements.txt
+!Dockerfile
+!docker-compose.yml
+!.env.docker
+!DEPLOY.md
+
+# ==================== Git/IDE/系统文件 ====================
+.git/
+.gitignore
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ==================== 临时文件 ====================
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+
+# ==================== 部署文档（可选，不打进镜像） ====================
+README.md
+*.md

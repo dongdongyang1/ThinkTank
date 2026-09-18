@@ -9,15 +9,19 @@ from utils.reranker_http_utils import rerank_documents
 # -----------------------------
 # Rerank / TopK 全局常量
 # -----------------------------
-# 动态 TopK 硬上限：最多取前 N 条（<=10）
-RERANK_MAX_TOPK : int = 10
-# 最小 TopK：至少保留前 N 条（>=1，且 <= RERANK_MAX_TOPK）
-RERANK_MIN_TOPK : int = 3
+# 动态 TopK 硬上限：最多取前 N 条（5）
+RERANK_MAX_TOPK : int = 5
+# 最小 TopK：至少保留前 N 条
+RERANK_MIN_TOPK : int = 0
+#对比类长度（不悬崖检测）
+COMPARISON_LEN = 10
+#最低相关性阈值（qwen3-rerank 0~1 分制，用 0.25-0.35 间网格校准）
+RERANK_MIN_SCORE : float = 0.30
 
 # 断崖阈值（绝对，判断高分文档）
-RERANK_GAP_ABS : float = 0.5
+RERANK_GAP_ABS : float = 0.6
 # 断崖阈值（相对，判断低分文档）
-RERANK_GAP_RATIO : float = 0.25
+RERANK_GAP_RATIO : float = 0.30
 
 class NodeRerank(NodeBase):
     """
@@ -40,8 +44,18 @@ class NodeRerank(NodeBase):
         # 2. Rerank精排（精排打分）
         reranked_docs : List[Dict[str,Any]] = self._step_2_rerank_merged_docs(state,merge_muti_docs)
 
-        # 3. 动态 Top_k截取（断崖检测）
-        cutoff_docs = self._step_3_cliff_cutoff(reranked_docs)
+        # 3. 最低分过滤：无关文档一律丢弃（对比/总结分支也必须先过滤）
+        reranked_docs = [d for d in reranked_docs
+                         if d.get("score") is not None and d["score"] >= RERANK_MIN_SCORE]
+
+        # 4. 动态 Top_k截取（断崖检测）
+        is_comparison = bool(state.get("is_comparison"))
+        is_summary = bool(state.get("is_summary"))
+        if is_comparison or is_summary:
+            # 对比/归纳题需要广覆盖：上限 10，跳过断崖截断（断崖不适用于多主题文档集）
+            cutoff_docs = reranked_docs[:min(COMPARISON_LEN, len(reranked_docs))]
+        else:
+            cutoff_docs = self._step_3_cliff_cutoff(reranked_docs)
 
         # 4. 更新state
         state["reranked_docs"] = cutoff_docs
@@ -115,6 +129,10 @@ class NodeRerank(NodeBase):
         """断崖检测截断：相邻得分差距超过阈值时截断。"""
         if not reranked_docs:
             return []
+        #低于最低分的文档一律丢弃
+        reranked_docs = [d for d in reranked_docs if d.get("score") is not None and d["score"]>=RERANK_MIN_SCORE]
+        if not reranked_docs:
+            return []
         upper_bound = min(RERANK_MAX_TOPK,len(reranked_docs))
         lower_bound = min(RERANK_MIN_TOPK,len(reranked_docs))
 
@@ -122,7 +140,7 @@ class NodeRerank(NodeBase):
         cutoff_pos = upper_bound
         # 遍历范围：从min_topk-1到max_topk-2（索引从0开始），检测相邻两个文档的分数差
         # 例：min_topk=3，max_topk=10 → 遍历i=2,3,4,5,6,7,8（对应第3~9条文档，检测与下一条的差距
-        for idx in range(lower_bound-1,upper_bound-1):
+        for idx in range(max(0,lower_bound-1),upper_bound-1):
             current_score = reranked_docs[idx].get("score")
             next_score = reranked_docs[idx+1].get("score")
 

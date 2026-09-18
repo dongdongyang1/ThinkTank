@@ -121,7 +121,7 @@ class NodeSearchHyde(NodeBase):
                 dense_vector=dense_vec,
                 sparse_vector=sparse_vec,
                 expr=expr,
-                limit=10   # 底层检索返回数量（后续会再过滤为5，预留更多结果做重排序）
+                limit=15   # 底层检索返回数量（预留更多结果做重排序）
             )
 
             # 6、执行混合向量检索

@@ -3,6 +3,7 @@
 所有配置从环境变量/.env读取，启动时自动校验必填项
 原有各config文件作为兼容层，从本settings读取
 """
+import os
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -77,6 +78,9 @@ class AppSettings(BaseSettings):
     # ========== token 告警阈值 ==========
     AGENT_INPUT_WARN_TOKENS: int = 8000
     KB_SEARCH_WARN_TOKENS: int = 3000
+    # 库外产品是否阻断联网搜索（true=一律拒答，评估用；false=保留联网兜底，生产默认）
+    UNKNOWN_PRODUCT_BLOCK_WEB: bool = os.getenv("UNKNOWN_PRODUCT_BLOCK_WEB", "false").lower() == "true"
+
 
     def validate_required(self) -> list[str]:
         """校验必填配置项，返回缺失字段列表"""

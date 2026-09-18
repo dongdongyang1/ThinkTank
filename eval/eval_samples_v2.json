@@ -1,0 +1,1838 @@
+[
+  {
+    "sample_id": "TT-004",
+    "category": "华为擎云W585",
+    "question": "华为擎云W585的键盘有哪些快捷键功能？",
+    "question_type": "简单事实查询",
+    "ground_truth": "华为擎云W585的键盘部分型号支持F1、F2等键作为快捷键（热键）模式，具体功能如下：\n\n- F1：降低屏幕亮度（仅支持华为品牌显示器）\n- F2：增强屏幕亮度（仅支持华为品牌显示器）\n- F4：开启或关闭静音\n- F5：减小音量\n- F6：增大音量\n- F8：切换投影屏幕模式\n\n若要将F1、F2等键作为功能键使用，可以按下Fn键，当Fn键指示灯亮起时，表示已将这些键锁定为功能键模式。再次按Fn键，当Fn键指示灯熄灭时，即可返回快捷键（热键）模式。\n\n此外，在开机或重启时，长按或连续点按F2键可以进入BIOS Setup界面。",
+    "relevant_doc_ids": [
+      "华为擎云W585 用户指南-(PGUV,KOS&UOS_01,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "键盘",
+      "快捷键",
+      "功能"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": "[ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-005",
+    "category": "H3C LA2608室内无线网关",
+    "question": "如何配置H3C LA2608与无线控制器互通？",
+    "question_type": "简单事实查询",
+    "ground_truth": "为了配置H3C LA2608与无线控制器互通，需要按照以下步骤进行：\n\n1. 配置拨号访问组的拨号控制列表：\n   - 进入系统视图：`<LA2608>system-view`\n   - 创建允许IP流量通过的拨号规则：`[LA2608]dialer-rule 1 ip permit`\n\n2. 配置DCC拨号：\n   - 切换到Cellular-Ethernet2/0接口：`[LA2608]interface Cellular-Ethernet2/0`\n   - 设置IP地址为蜂窝网络分配：`[LA2608-Cellular-Ethernet2/0]ip address cellular-allocated`\n   - 启用循环拨号功能：`[LA2608-Cellular-Ethernet2/0]dialer enable-circular`\n   - 将该接口加入拨号组1：`[LA2608-Cellular-Ethernet2/0]dialer-group 1`\n   - 设置空闲超时时间为0秒：`[LA2608-Cellular-Ethernet2/0]dialer timer idle 0`\n   - 设置自动拨号间隔为5秒：`[LA2608-Cellular-Ethernet2/0]dialer timer autodial 5`\n   - 使用运营商提供的拨号串（例如*99#）设置自动拨号：`[LA2608-Cellular-Ethernet2/0]dialer number *99# autodial`\n   - 开启出站NAT：`[LA2608-Cellular-Ethernet2/0]nat outbound`\n   - 完成后退出接口配置模式：`[LA2608-Cellular-Ethernet2/0]quit`\n\n3. 配置DNS解析功能：\n   - 在系统视图下启用DNS解析：`[LA2608]dns resolve`\n\n4. 配置静态路由指向Cellular-Ethernet2/0接口作为默认网关：\n   - 添加一条默认路由：`[LA2608]ip route-static 0.0.0.0 0.0.0.0 Cellular-Ethernet2/0`\n\n5. 指定运营商无线控制器的IP地址：\n   - 设置AC的IP地址为60.191.99.143：`[LA2608] wlan ac ip 60.191.99.143`\n\n对于无线控制器端的配置，需执行以下操作：\n\n1. 创建业务VLAN 2：`<AC>system-view [AC]vlan 2 [AC-vlan2] quit`\n2. 创建WLAN-ESS 1接口并将其加入到VLAN 2中：`[AC]interface WLAN-ESS 1 [AC-WLAN-ESS1]port access vlan 2 [AC-WLAN-ESS1]quit`\n3. 配置明文方式的服务模板，并设置SSID为ssidh3c：`[AC]wlan service-template 1 clear [AC-wlan-st-1]ssid ssidh3c`",
+    "relevant_doc_ids": [
+      "H3C LA2608室内无线网关 用户手册-6W100-整本手册"
+    ],
+    "relevant_keywords": [
+      "配置",
+      "无线控制器",
+      "互通"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": "[ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-006",
+    "category": "HUAWEI MateBook B3-420",
+    "question": "HUAWEI MateBook B3-420笔记本电脑有哪些配件？",
+    "question_type": "简单事实查询",
+    "ground_truth": "HUAWEI MateBook B3-420笔记本电脑的配件包括蓝牙鼠标（可选配件）和HUAWEI Mini RJ45转RJ45转接线（部分机型配置）。",
+    "relevant_doc_ids": [
+      "HUAWEI MateBook B3-420 用户指南-(NDZ,Windows11_01,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "配件",
+      "蓝牙鼠标",
+      "转接线"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-007",
+    "category": "Aolynk CC系列室内型Cable网络集中器",
+    "question": "Aolynk CC系列室内型Cable网络集中器可以通过哪些方式进行管理？",
+    "question_type": "简单事实查询",
+    "ground_truth": "Aolynk CC系列室内型Cable网络集中器可以通过Web设置页面或命令行对设备进行本地管理。",
+    "relevant_doc_ids": [
+      "Aolynk CC系列室内型Cable网络集中器 用户手册-6W202-整本手册"
+    ],
+    "relevant_keywords": [
+      "管理",
+      "Web设置页面",
+      "命令行"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-008",
+    "category": "联想至像大象Elephant黑白激光多功能双面一体机",
+    "question": "联想至像大象打印机的灯效指示有哪些？",
+    "question_type": "简单事实查询",
+    "ground_truth": "联想至像大象打印机的灯效指示包括以下几种情况：\n\n1. 电源键（◎）：可以显示打印机当前工作状态。\n2. 开始键（◎）：可以显示打印机当前工作状态。\n3. 缺纸指示灯：缺纸时会显示红灯，提示用户在纸盒中装入纸张。\n4. 卡纸指示灯：卡纸时会显示红灯，提示用户按需清除卡纸。\n5. 耗材状态指示灯：当耗材寿命≤10%时红灯闪烁，=0%时红灯长亮，提示用户根据软件端提示更换墨粉盒/感光鼓(硒鼓)。\n6. Wi-Fi 键（◎）：配网或使用网络打印时, 会显示当前状态灯。具体表现为：\n   - 配网进行中，Wi-Fi 键白灯闪烁。\n   - 配网成功后，Wi-Fi 键白灯长亮。\n   - 配网不成功30分钟后超时，Wi-Fi 键白灯灭。",
+    "relevant_doc_ids": [
+      "联想至像大象系列打印机用户手册V1.02-20250217"
+    ],
+    "relevant_keywords": [
+      "灯效指示",
+      "打印机"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": "[ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-009",
+    "category": "RS-PRORS-12数字万用表",
+    "question": "RS-PRORS-12数字万用表如何使用？",
+    "question_type": "简单事实查询",
+    "ground_truth": "使用RS-PRORS-12数字万用表的步骤如下：\n\n1. 在开始测量之前，请确保已经阅读了使用说明书，并理解所有安全警告和操作指南。特别注意不要将输入的测量值超出其所允许的量程范围。\n\n2. 根据需要测量的内容选择正确的功能设置。例如，如果要测量直流电压，则转动功能选择转盘至相应的VDC位置（根据预期的电压大小选择合适的量程：200mV, 2000mV, 20V或200V）。对于交流电压、电流等其他类型的测量也应相应地调整转盘到正确的位置。\n\n3. 将红色测试笔插入正极端口，黑色测试笔插入COM端口。当进行大电流(10A)测量时，需将红色测试笔插入专用的10A端口。\n\n4. 连接好测试笔后，将其触点放置于待测电路两端。此时LCD显示屏上会显示出读数。如果是在光线较暗环境下工作，可以按下背光按键来点亮屏幕背景灯以便查看数据。完成测量后记得关闭电源并妥善存放仪表。\n\n注意事项：\n- 测量高压电路时必须采取适当的安全措施。\n- 当负极端口(COM)电压超过500V接地电压时禁止进行电压测试。\n- 功能开关位于电流、电阻或二极管模式下时，切勿直接连接到带电电路中。\n- 对含有电容的设备进行电阻或二极管检测前，先放电并断开电源。\n- 更换保险丝或电池前务必关闭电源并移除测试笔。\n- 确认电池盖及保险丝盖已牢固安装且螺丝拧紧后再使用仪表。",
+    "relevant_doc_ids": [
+      "万用表RS-12的使用"
+    ],
+    "relevant_keywords": [
+      "数字万用表",
+      "使用方法"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": "[ground_truth质量待审核] [ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-010",
+    "category": "华为平板 C5",
+    "question": "华为平板 C5的EMUI版本是多少？",
+    "question_type": "简单事实查询",
+    "ground_truth": "华为平板 C5的EMUI版本是10.1。",
+    "relevant_doc_ids": [
+      "华为平板 C5 平板用户指南-(BZT3-W59&W69,EMUI10.1_01,ZH-CN)"
+    ],
+    "relevant_keywords": [
+      "华为平板 C5",
+      "EMUI版本"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": "[ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-011",
+    "category": "HAK180烫金机",
+    "question": "HAK180烫金机的安全手册里提到了哪些安全注意事项？",
+    "question_type": "简单事实查询",
+    "ground_truth": "HAK180烫金机的安全手册中提到的安全注意事项可以在《hak180产品安全手册》中找到详细信息。",
+    "relevant_doc_ids": [
+      "hak180产品安全手册"
+    ],
+    "relevant_keywords": [
+      "安全手册",
+      "安全注意事项"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-012",
+    "category": "华为笔记本电脑",
+    "question": "华为MateBook B3-420的键盘布局会不会根据不同国家和地区有所变化？",
+    "question_type": "简单事实查询",
+    "ground_truth": "是的，华为MateBook B3-420的键盘布局可能会因国家、地区存在差异，请以实物为准。",
+    "relevant_doc_ids": [
+      "HUAWEI MateBook B3-420 用户指南-(NDZ,Windows11_01,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "华为MateBook B3-420",
+      "键盘布局",
+      "国家",
+      "地区"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-013",
+    "category": "H3C无线网关",
+    "question": "配置H3CLA2608室内无线网关时，需要与什么设备互通？",
+    "question_type": "简单事实查询",
+    "ground_truth": "配置H3CLA2608室内无线网关时，需要与无线控制器互通。",
+    "relevant_doc_ids": [
+      "H3C LA2608室内无线网关 用户手册-6W100-整本手册"
+    ],
+    "relevant_keywords": [
+      "H3CLA2608",
+      "无线网关",
+      "无线控制器"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-014",
+    "category": "联想打印机",
+    "question": "联想至像大象Elephant黑白激光多功能双面一体机首次安装打印机的步骤是什么？",
+    "question_type": "简单事实查询",
+    "ground_truth": "联想至像大象Elephant黑白激光多功能双面一体机首次安装打印机的步骤如下：1. 将打印机放置在平稳的工作台上；2. 连接电源并开机；3. 安装墨粉盒；4. 关闭前盖；5. 通过智享家App或电脑App【Lenovo Page】给打印机配置网络。",
+    "relevant_doc_ids": [
+      "联想至像大象系列打印机用户手册V1.02-20250217"
+    ],
+    "relevant_keywords": [
+      "联想至像大象",
+      "首次安装",
+      "打印机"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-015",
+    "category": "华为平板",
+    "question": "华为平板C5的用户指南中提到的系统版本是什么？",
+    "question_type": "简单事实查询",
+    "ground_truth": "华为平板C5的用户指南中提到的系统版本是EMUI 10.1。",
+    "relevant_doc_ids": [
+      "华为平板 C5 平板用户指南-(BZT3-W59&W69,EMUI10.1_01,ZH-CN)"
+    ],
+    "relevant_keywords": [
+      "华为平板C5",
+      "用户指南",
+      "系统版本"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": "[ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-016",
+    "category": "Aolynk网络设备",
+    "question": "Aolynk CC系列室内型Cable网络集中器可以通过哪些方式进行本地管理？",
+    "question_type": "简单事实查询",
+    "ground_truth": "Aolynk CC系列室内型Cable网络集中器可以通过Web设置页面或命令行对设备进行本地管理。",
+    "relevant_doc_ids": [
+      "Aolynk CC系列室内型Cable网络集中器 用户手册-6W202-整本手册"
+    ],
+    "relevant_keywords": [
+      "Aolynk CC系列",
+      "Cable网络集中器",
+      "本地管理"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-017",
+    "category": "奔图打印机",
+    "question": "奔图P3030D黑白激光打印机的用户指南版本号是多少？",
+    "question_type": "简单事实查询",
+    "ground_truth": "奔图P3030D黑白激光打印机的用户指南版本号是zh_CN V1_2。",
+    "relevant_doc_ids": [
+      "Pantum P3030 User Guide zh_CN V1_2"
+    ],
+    "relevant_keywords": [
+      "奔图P3030D",
+      "用户指南",
+      "版本号"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-018",
+    "category": "华为台式机",
+    "question": "华为擎云B530用户指南中提到的系统版本是什么？",
+    "question_type": "简单事实查询",
+    "ground_truth": "华为擎云B530用户指南中提到的系统版本是Windows11_03。",
+    "relevant_doc_ids": [
+      "华为擎云B530 用户指南-(PUCZ,Windows11_03,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "华为擎云B530",
+      "用户指南",
+      "系统版本"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-019",
+    "category": "华为擎云W585",
+    "question": "我想知道怎么在华为擎云W585上设置BIOS密码，可以给我详细步骤吗？",
+    "question_type": "操作步骤查询",
+    "ground_truth": "1. 开机时按F2键进入BIOS设置界面。2. 使用方向键导航到“Security”选项卡。3. 选择“Set User Password”，然后输入新密码并确认。4. 按F10保存设置并退出。",
+    "relevant_doc_ids": [
+      "华为擎云W585 用户指南-(PGUV,KOS&UOS_01,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "BIOS",
+      "密码",
+      "设置"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "请确保记住您的BIOS密码，以免忘记后无法访问计算机。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-020",
+    "category": "H3C LA2608室内无线网关",
+    "question": "如何配置我的H3C LA2608室内无线网关与无线控制器互通？",
+    "question_type": "操作步骤查询",
+    "ground_truth": "1. 登录到LA2608的管理界面。2. 进入'Wireless'菜单，选择'Controller'。3. 输入无线控制器的IP地址和其他必要信息。4. 保存设置并重启设备。5. 在无线控制器端添加LA2608作为接入点。6. 验证两者是否连通。",
+    "relevant_doc_ids": [
+      "H3C LA2608室内无线网关 用户手册-6W100-整本手册"
+    ],
+    "relevant_keywords": [
+      "配置",
+      "无线控制器",
+      "互通"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "请确保所有配置信息准确无误，以避免网络连接问题。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-021",
+    "category": "华为平板C5",
+    "question": "我刚买了华为平板C5，能告诉我怎么给它充电和开机吗？",
+    "question_type": "操作步骤查询",
+    "ground_truth": "1. 使用随附的USB Type-C数据线将平板电脑连接到电源适配器或电脑。2. 将电源适配器插入电源插座。3. 等待屏幕显示充电图标，表示正在充电。4. 充电完成后，长按电源键几秒钟，直到看到华为标志出现，即开机成功。",
+    "relevant_doc_ids": [
+      "华为平板 C5 平板用户指南-(BZT3-W59&W69,EMUI10.1_01,ZH-CN)"
+    ],
+    "relevant_keywords": [
+      "充电",
+      "开机"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "请使用原装充电器和数据线，以保证安全和最佳性能。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-022",
+    "category": "联想至像大象Elephant黑白激光多功能双面一体机",
+    "question": "我要打印手机里的文件，请问具体的操作步骤是什么？",
+    "question_type": "操作步骤查询",
+    "ground_truth": "1. 确保打印机已连接到同一Wi-Fi网络。2. 在手机上安装智享家App。3. 打开智享家App，选择要打印的文件。4. 点击‘打印’按钮，选择打印机型号。5. 设置打印参数（如页数、副本数量）。6. 点击‘开始打印’。",
+    "relevant_doc_ids": [
+      "联想至像大象系列打印机用户手册V1.02-20250217"
+    ],
+    "relevant_keywords": [
+      "打印",
+      "手机",
+      "文件"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "请确保手机和打印机都已正确连接到互联网。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-023",
+    "category": "Aolynk CB304n Cable网桥",
+    "question": "怎样通过Web页面来管理我的Aolynk CB304n Cable网桥？",
+    "question_type": "操作步骤查询",
+    "ground_truth": "1. 用网线将电脑连接到网桥的LAN口。2. 打开浏览器，在地址栏输入网桥的默认IP地址（通常是192.168.1.1）。3. 输入用户名和密码登录管理界面（默认为admin/admin）。4. 根据需要进行网络设置或其他配置。5. 保存设置并重启网桥。",
+    "relevant_doc_ids": [
+      "Aolynk CB304n Cable网桥 用户手册-5W100-整本手册"
+    ],
+    "relevant_keywords": [
+      "Web管理",
+      "Cable网桥"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "首次登录后建议修改默认密码以提高安全性。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-024",
+    "category": "华为擎云B530",
+    "question": "我的华为擎云B530笔记本电脑如何恢复出厂设置？",
+    "question_type": "操作步骤查询",
+    "ground_truth": "1. 关闭电脑。2. 启动时按F10键进入一键恢复界面。3. 选择‘系统恢复’选项。4. 按照屏幕提示进行操作，选择恢复出厂设置。5. 等待恢复过程完成，期间不要断电或关闭电脑。",
+    "relevant_doc_ids": [
+      "华为擎云B530 用户指南-(PUCZ,Windows11_03,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "恢复",
+      "出厂设置"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "恢复出厂设置会清除所有个人数据，请提前备份重要文件。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-025",
+    "category": "H3C ER2100企业级路由器",
+    "question": "我想在我的H3C ER2100企业级路由器上查看当前的固件版本，应该怎么做？",
+    "question_type": "操作步骤查询",
+    "ground_truth": "1. 通过网线将电脑连接到路由器的一个LAN口。2. 打开浏览器，在地址栏输入路由器的IP地址（通常是192.168.1.1）。3. 输入用户名和密码登录管理界面。4. 导航到‘系统状态’或‘关于’页面。5. 查看当前固件版本信息。",
+    "relevant_doc_ids": [
+      "H3C ER2100企业级路由器 用户手册-6W104-整本手册"
+    ],
+    "relevant_keywords": [
+      "查看",
+      "固件版本"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "请确保使用正确的IP地址和管理员账号登录。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-026",
+    "category": "奔图P3030D黑白激光打印机",
+    "question": "我刚买了一台奔图P3030D打印机，想了解一下怎么取消正在进行的打印任务？",
+    "question_type": "操作步骤查询",
+    "ground_truth": "1. 打开打印机控制面板。2. 选择‘作业列表’或‘当前任务’。3. 找到需要取消的打印任务。4. 选择该任务并点击‘取消’按钮。5. 确认取消操作，等待打印机停止打印。",
+    "relevant_doc_ids": [
+      "Pantum P3030 User Guide zh_CN V1_2"
+    ],
+    "relevant_keywords": [
+      "取消",
+      "打印任务"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "取消打印任务前请确保没有其他重要的打印任务正在进行。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-027",
+    "category": "华为擎云W585",
+    "question": "我想知道怎么通过键盘快捷键进入BIOS设置界面，以及如何恢复BIOS默认设置？",
+    "question_type": "操作步骤查询",
+    "ground_truth": "1. 进入 BIOS 设置界面的方法：开机时按F2键可以进入BIOS设置界面。2. 恢复 BIOS 默认设置：在BIOS设置界面中选择“恢复默认设置”选项，并确认执行。",
+    "relevant_doc_ids": [
+      "华为擎云W585 用户指南-(PGUV,KOS&UOS_01,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "BIOS",
+      "恢复默认设置",
+      "快捷键"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "在恢复BIOS默认设置前，请确保已保存所有重要数据。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-028",
+    "category": "联想至像大象Elephant黑白激光多功能双面一体机",
+    "question": "我刚买了台联想至像大象打印机，想了解一下如何首次安装它并给它配置网络连接？",
+    "question_type": "操作步骤查询",
+    "ground_truth": "1. 首次安装打印机：将打印机放置于平稳的桌面上，打开包装箱取出打印机和配件；按照说明书连接电源线并开启电源开关。2. 给打印机配置网络：下载智享家App或电脑端应用【Lenovo Page】，根据应用程序内的指引完成设备的Wi-Fi配置。",
+    "relevant_doc_ids": [
+      "联想至像大象系列打印机用户手册V1.02-20250217"
+    ],
+    "relevant_keywords": [
+      "首次安装",
+      "配置网络",
+      "智享家 App"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "请确保打印机与路由器之间的距离不超过推荐范围以保证信号强度。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-029",
+    "category": "华为擎云W585, H3C LA2608室内无线网关",
+    "question": "如果我使用的是华为擎云W585笔记本，想要连接到H3C LA2608室内无线网关，应该怎样设置？",
+    "question_type": "多跳推理",
+    "ground_truth": "1. 在华为擎云W585笔记本上，按Fn+F12键打开无线网络功能。2. 从可用的无线网络列表中选择H3C LA2608无线网关对应的SSID。3. 输入正确的密码以连接到该无线网络。4. 登录H3C LA2608的管理界面（默认IP地址通常是192.168.1.1），配置必要的网络参数，确保与笔记本的连接正常。",
+    "relevant_doc_ids": [
+      "华为擎云W585 用户指南-(PGUV,KOS&UOS_01,zh-cn)",
+      "H3C LA2608室内无线网关 用户手册-6W100-整本手册"
+    ],
+    "relevant_keywords": [
+      "无线网络",
+      "SSID",
+      "管理界面"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "需要从华为擎云W585的用户指南中找到如何开启无线网络的方法，并结合H3C LA2608室内无线网关的手册来完成具体的连接和配置步骤。",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-030",
+    "category": "华为MateBook B3-420, 联想至像大象系列打印机",
+    "question": "我有一台华为MateBook B3-420笔记本电脑，如何通过联想至像大象Elephant黑白激光多功能双面一体机进行打印操作？",
+    "question_type": "多跳推理",
+    "ground_truth": "1. 将联想至像大象打印机通过USB线或网络连接到您的华为MateBook B3-420。2. 打开笔记本上的控制面板，进入设备和打印机选项。3. 点击添加打印机，选择你的打印机型号并按照提示完成安装。4. 安装完成后，在文档或图片上点击打印按钮，选择已安装的联想至像大象打印机，设置好打印参数后点击确定即可开始打印。",
+    "relevant_doc_ids": [
+      "HUAWEI MateBook B3-420 用户指南-(NDZ,Windows11_01,zh-cn)",
+      "联想至像大象系列打印机用户手册V1.02-20250217"
+    ],
+    "relevant_keywords": [
+      "打印机",
+      "USB连接",
+      "控制面板"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "首先从华为MateBook B3-420用户指南了解如何添加打印机，再参考联想至像大象系列打印机用户手册中的具体连接方式及打印流程。",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-031",
+    "category": "Aolynk CC系列室内型Cable网络集中器, Aolynk CB304n Cable网桥",
+    "question": "如果我想用Aolynk CC系列室内型Cable网络集中器与Aolynk CB304n Cable网桥配合工作，应该如何配置它们？",
+    "question_type": "多跳推理",
+    "ground_truth": "文档中未提及具体的配置步骤来将Aolynk CC系列室内型Cable网络集中器与Aolynk CB304n Cable网桥配合工作。为了获取详细的配置指导，建议访问H3C官方网站(www.h3c.com.cn)，在[服务支持/文档中心]栏目下查找相关的硬件安装类、软件升级类、配置类或维护类资料，或者直接联系技术支持热线电话：400-810-0504（手机、固话均可拨打）以获得帮助。",
+    "relevant_doc_ids": [
+      "Aolynk CC系列室内型Cable网络集中器 用户手册-6W202-整本手册",
+      "Aolynk CB304n Cable网桥 用户手册-5W100-整本手册"
+    ],
+    "relevant_keywords": [
+      "Cable网桥",
+      "网络集中器",
+      "管理界面"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "需要分别查阅Aolynk CC系列室内型Cable网络集中器和Aolynk CB304n Cable网桥的用户手册，了解两者之间的配置关系以及如何让它们协同工作。",
+    "safety_notes": "",
+    "notes": "[ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-032",
+    "category": "华为平板C5, 迅饶LUMISCAN网关",
+    "question": "我有一个华为平板C5，想通过迅饶LUMISCAN网关来远程监控家里的智能设备，要怎么设置？",
+    "question_type": "多跳推理",
+    "ground_truth": "1. 先确保迅饶LUMISCAN网关已经接通电源并且连接到了家庭Wi-Fi网络。2. 使用华为平板C5下载并安装与迅饶LUMISCAN网关配套的应用程序。3. 打开应用程序，按照提示输入网关的登录信息（如IP地址、用户名和密码）。4. 成功登录后，在应用内添加你需要监控的智能设备，并根据指引完成相应的配置。5. 完成上述步骤后，你就可以通过华为平板C5上的应用程序实时查看家中智能设备的状态了。",
+    "relevant_doc_ids": [
+      "华为平板 C5 平板用户指南-(BZT3-W59&W69,EMUI10.1_01,ZH-CN)",
+      "迅饶网关与小米产品通讯配置说明"
+    ],
+    "relevant_keywords": [
+      "远程监控",
+      "智能设备",
+      "应用程序"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "需结合华为平板C5的操作方法与迅饶LUMISCAN网关的具体使用指南，来实现通过平板远程控制家庭智能设备的目标。",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-033",
+    "category": "奔图P3030D黑白激光打印机, 奔图P3500系列黑白单功能激光打印机",
+    "question": "我在使用奔图P3030D打印机时遇到了问题，想换成P3500系列打印机，请问这两款打印机的主要区别是什么？更换过程中需要注意哪些事项？",
+    "question_type": "多跳推理",
+    "ground_truth": "文档中未提及P3030D与P3500系列打印机的具体区别。对于更换过程中需要注意的事项，同样没有直接的相关信息。但是，可以注意到一些通用的注意事项：\n\n1. 在使用新打印机前，请仔细阅读用户指南以确保正确安装和操作。\n2. 请确认新的P3500系列打印机适用于非热带且海拔不超过2000米的地区。\n3. 注意激光辐射安全，不要随意拆解机器，因为内部含有Ⅲb类激光二极管，尽管其设计为完全密闭状态。\n4. 当旧设备不再使用时，建议按照制造商提供的流程将其送至指定维修中心进行回收处理，以便于资源的有效利用并减少环境污染。\n\n由于缺乏关于这两款型号之间具体差异的信息，建议访问奔图官网（www.pantum.com）或联系客服获取更详细的对比资料。",
+    "relevant_doc_ids": [
+      "Pantum P3030 User Guide zh_CN V1_2",
+      "PantumP3500用户手册zh_CNV1.2_1644316283788"
+    ],
+    "relevant_keywords": [
+      "打印机",
+      "耗材",
+      "驱动程序"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "需要对比两款打印机的产品手册，找出它们之间的性能差异，并结合各自的用户指南给出更换过程中的关键步骤。",
+    "safety_notes": "",
+    "notes": "[ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-034",
+    "category": "H3C ER2100企业级路由器, H3C MER系列路由器",
+    "question": "我们公司正在考虑升级我们的网络设备，目前使用的是H3C ER2100企业级路由器，想知道升级到H3C MER系列路由器会带来哪些改进？",
+    "question_type": "多跳推理",
+    "ground_truth": "升级带来的改进包括但不限于：1. 更高的数据传输速率，MER系列支持更高速度的有线和无线连接。2. 支持更多高级安全特性，如入侵防御系统(IPS)等。3. 提供更好的QoS服务质量保障，确保关键业务优先处理。4. 更强的扩展性，可以更容易地增加额外的功能模块或接口卡。建议详细比较两者的规格书，以确定最适合您需求的具体型号。",
+    "relevant_doc_ids": [
+      "H3C ER2100企业级路由器 用户手册-6W104-整本手册",
+      "H3C MER系列路由器 用户手册-R0821-6W105-整本手册"
+    ],
+    "relevant_keywords": [
+      "路由器",
+      "数据传输速率",
+      "安全特性"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "需要同时参考H3C ER2100与H3C MER系列路由器的技术文档，分析两者在性能、安全性等方面的差异。",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-035",
+    "category": "华为擎云B530, 华为擎云W525",
+    "question": "我们办公室现在用的是华为擎云B530台式机，计划采购一些便携式的华为擎云W525笔记本作为出差备用机，请问这两款设备之间有什么主要的不同点？",
+    "question_type": "多跳推理",
+    "ground_truth": "主要区别如下：1. 设备形态：华为擎云B530是台式机形式，而W525则是便携式的笔记本电脑。2. 移动性：W525便于携带，适合移动办公；B530更适合固定位置使用。3. 性能方面，B530可能配备更强的处理器和更大的存储空间，因为其体积允许使用更高规格的组件。4. 接口数量：B530由于空间较大，可能提供更多种类和数量的外部接口。",
+    "relevant_doc_ids": [
+      "华为擎云B530 用户指南-(PUCZ,Windows11_03,zh-cn)",
+      "华为擎云W525 用户指南-(PGUW-WBX0,KOS&UOS_02,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "台式机",
+      "笔记本电脑",
+      "移动性"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "通过对比华为擎云B530与W525各自的产品手册，总结出两者之间在设计目的、硬件配置等方面的关键区别。",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-036",
+    "category": "联想CS2610DNW彩色数码打印机, BrotherHL-3070彩色数码打印机",
+    "question": "我们现在使用的是一台联想CS2610DNW彩色数码打印机，但听说BrotherHL-3070也很好用，能否告诉我这两款打印机在功能上有哪些显著的区别？",
+    "question_type": "多跳推理",
+    "ground_truth": "联想CS2610DNW与BrotherHL-3070的主要区别包括：1. 打印速度：联想CS2610DNW的彩色打印速度可能更快。2. 分辨率：BrotherHL-3070可能提供更高的打印分辨率，从而获得更清晰的文字和图像输出。3. 纸张处理能力：联想CS2610DNW可能支持更大容量的纸盘，适合高负荷打印需求。4. 功能多样性：BrotherHL-3070可能集成了更多的附加功能，比如直接扫描到电子邮件等。",
+    "relevant_doc_ids": [
+      "CS2610DNW_Manuals_ALL_20240423095554",
+      "hl3070使用说明书"
+    ],
+    "relevant_keywords": [
+      "打印机",
+      "打印速度",
+      "分辨率"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "需分别查看联想CS2610DNW与BrotherHL-3070的产品说明书，对比两者的技术规格来确定它们之间的主要差异。",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-037",
+    "category": "华为擎云W585, H3C LA2608室内无线网关",
+    "question": "如果我想在我的华为擎云W585电脑上通过H3C LA2608室内无线网关连接到公司网络，需要做哪些配置？",
+    "question_type": "多跳推理",
+    "ground_truth": "为了在华为擎云W585电脑上通过H3C LA2608室内无线网关连接到公司网络，你需要完成以下配置步骤：\n\n1. 在华为擎云W585电脑上，确保已经安装了必要的驱动程序和软件以支持无线网络连接。部分型号支持WLAN，开机后可直接连接无线网络。\n\n2. 对于H3C LA2608室内无线网关的配置，首先需要确保LA2608已正确安装SIM卡，并且能够通过3G/4G网络连接到运营商无线控制器。接着按照以下步骤进行配置：\n   1. 配置拨号访问组的拨号控制列表：进入系统视图后，输入`dialer-rule 1 ip permit`。\n   2. 配置DCC拨号，在接口Cellular-Ethernet2/0下执行如下命令：\n      - `ip address cellular-allocated`\n      - `dialer enable-circular`\n      - `dialer-group 1`\n      - `dialer timer idle 0`\n      - `dialer timer autodial 5`\n      - `dialer number *99# autodial`（注意：这里的*99#是示例，实际应使用从网络运营商获取的具体拨号串）\n      - `nat outbound`\n   3. 配置DNS解析功能：在系统视图下输入`dns resolve`。\n   4. 配置静态路由：在系统视图下输入`ip route-static 0.0.0.0 0.0.0.0 Cellular-Ethernet2/0`。\n   5. 指定运营商无线控制器的IP地址：在系统视图下输入`wlan ac ip 60.191.99.143`（请替换为你的无线控制器的实际IP地址）。\n\n3. 完成上述设置后，回到华为擎云W585电脑上，打开无线网络设置界面，搜索并选择由H3C LA2608提供的无线网络SSID（例如文档中提到的`ssidh3c`），然后根据提示输入正确的密码来完成连接。\n\n请注意，以上步骤假设你已经获得了所有必要的信息，比如无线控制器的确切IP地址以及正确的无线网络名称和密码等。如果遇到任何问题，请联系你的网络管理员或参考更详细的设备手册。",
+    "relevant_doc_ids": [
+      "华为擎云W585 用户指南-(PGUV,KOS&UOS_01,zh-cn)",
+      "H3C LA2608室内无线网关 用户手册-6W100-整本手册"
+    ],
+    "relevant_keywords": [
+      "华为擎云W585",
+      "H3C LA2608",
+      "无线网关",
+      "网络连接"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "从华为擎云W585的基本操作文档中获取关于如何启动设备的信息 -> 从H3C LA2608的手册中学习如何配置网关与无线控制器之间的通信 -> 结合两份文档提供的信息来解决跨设备网络接入问题",
+    "safety_notes": "",
+    "notes": "[ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-038",
+    "category": "联想至像大象Elephant黑白激光多功能双面一体机, Panda Pro系列打印机",
+    "question": "我有一个Panda Pro系列打印机和一个联想至像大象Elephant黑白激光多功能双面一体机，想要了解它们各自支持哪种类型的打印方式，并且如果想让这两款打印机都能通过智享家App分享给其他家庭成员使用，应该如何操作？",
+    "question_type": "多跳推理",
+    "ground_truth": "联想至像大象Elephant黑白激光多功能双面一体机支持的打印方式包括通过手机中的文件打印（使用智享家App）和电脑中的文件打印（使用Lenovo Page软件）。Panda Pro系列打印机同样支持这两种打印方式，并额外支持NFC连接进行打印。\n\n要让这两款打印机都能通过智享家App分享给其他家庭成员使用，可以按照以下步骤操作：\n\n对于联想至像大象Elephant黑白激光多功能双面一体机：\n1. 确保打印机已经成功连接到网络。\n2. 打开智享家App并登录您的账户。\n3. 在设备列表中找到已连接的打印机，点击进入设备详情页。\n4. 选择“分享设备”，然后输入您想要分享给的家庭成员手机号码或直接从联系人列表中选择。发送邀请后，对方接受邀请即可使用该打印机。\n\n对于Panda Pro系列打印机：\n1. 同样先确保打印机已经正确地配置了网络连接。\n2. 登录智享家App。\n3. 从设备列表里选中对应的Panda Pro打印机，进入其设置界面。\n4. 寻找并点击“分享设备”选项，接着输入接收者的联系方式或将他们从您的联系人中选取出来发送邀请链接。当被邀请者同意加入后，他们就能够访问这台打印机了。",
+    "relevant_doc_ids": [
+      "联想至像大象系列打印机用户手册V1.02-20250217",
+      "Panda Pro系列打印机用户手册V1.04-20251029"
+    ],
+    "relevant_keywords": [
+      "Panda Pro系列打印机",
+      "联想至像大象Elephant黑白激光多功能双面一体机",
+      "智享家App",
+      "打印机共享"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "从Panda Pro系列打印机的手册了解其打印功能 -> 从联想至像大象打印机的手册了解到更多功能如复印及如何通过App分享设备 -> 综合两个来源的信息解答关于不同品牌打印机的支持特性以及如何实现跨品牌设备共享的问题",
+    "safety_notes": "",
+    "notes": "[ground_truth质量待审核] [ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-039",
+    "category": "华为笔记本电脑",
+    "question": "华为MateBook B3-420和B3-520的外观有什么不同？",
+    "question_type": "总结归纳",
+    "ground_truth": "华为MateBook B3-420和B3-520在外观上有一些差异。B3-420的键盘布局可能会因国家、地区存在差异，而B3-520的具体外观差异未详细描述，但两者都提供了触摸板、充电接口等功能。具体差异需要根据实物进行对比。",
+    "relevant_doc_ids": [
+      "HUAWEI MateBook B3-420 用户指南-(NDZ,Windows11_01,zh-cn)",
+      "HUAWEI MateBook B3-520 用户手册-(03,zh-cn,BohrDZ)"
+    ],
+    "relevant_keywords": [
+      "华为",
+      "MateBook",
+      "外观",
+      "键盘布局"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-040",
+    "category": "H3C网络设备",
+    "question": "如何配置H3C LA2608室内无线网关与运营商无线控制器互通？",
+    "question_type": "总结归纳",
+    "ground_truth": "为了配置H3C LA2608室内无线网关与运营商无线控制器互通，需要按照以下步骤操作：\n\n1. 配置LA2608：\n   1.1 进入系统视图：`<LA2608>system-view`\n   1.2 配置拨号访问组的拨号控制列表：`[LA2608]dialer-rule 1 ip permit`\n   1.3 进入Cellular-Ethernet2/0接口视图：`[LA2608]interface Cellular-Ethernet2/0`\n   1.4 设置IP地址为蜂窝网络分配：`[LA2608-Cellular-Ethernet2/0]ip address cellular-allocated`\n   1.5 启用循环拨号：`[LA2608-Cellular-Ethernet2/0]dialer enable-circular`\n   1.6 将该接口加入到拨号组1：`[LA2608-Cellular-Ethernet2/0]dialer-group 1`\n   1.7 设置空闲超时时间为0秒：`[LA2608-Cellular-Ethernet2/0]dialer timer idle 0`\n   1.8 设置自动拨号间隔为5秒：`[LA2608-Cellular-Ethernet2/0]dialer timer autodial 5`\n   1.9 使用运营商提供的拨号串进行自动拨号设置（此处以*99#为例）：`[LA2608-Cellular-Ethernet2/0]dialer number *99# autodial`\n   1.10 开启NAT出站功能：`[LA2608-Cellular-Ethernet2/0]nat outbound`\n   1.11 返回上一级视图：`[LA2608-Cellular-Ethernet2/0]quit`\n   1.12 启用DNS解析：`[LA2608]dns resolve`\n   1.13 添加默认路由指向Cellular-Ethernet2/0接口：`[LA2608]ip route-static 0.0.0.0 0.0.0.0 Cellular-Ethernet2/0`\n   1.14 指定运营商无线控制器的IP地址（示例中使用60.191.99.143）：`[LA2608] wlan ac ip 60.191.99.143`\n\n2. 配置运营商无线控制器：\n   2.1 创建业务VLAN 2：`<AC>system-view [AC]vlan 2 [AC-vlan2] quit`\n   2.2 创建WLAN-ESS 1接口并将其加入到VLAN 2：`[AC]interface WLAN-ESS 1 [AC-WLAN-ESS1]port access vlan 2 [AC-WLAN-ESS1]quit`\n   2.3 配置明文方式的服务模板，并设置SSID为ssidh3c：`[AC]wlan service-template 1 clear [AC-wlan-st-1]ssid ssidh3c`\n\n完成以上步骤后，LA2608室内无线网关即可通过3G/4G网络连接至指定的运营商无线控制器，并向用户提供无线服务。请注意，实际操作过程中可能需要根据具体情况调整部分参数或命令。",
+    "relevant_doc_ids": [
+      "H3C LA2608室内无线网关 用户手册-6W100-整本手册"
+    ],
+    "relevant_keywords": [
+      "H3C",
+      "LA2608",
+      "无线网关",
+      "配置"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": "[ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-041",
+    "category": "打印机",
+    "question": "联想至像大象系列打印机支持哪些打印方式？",
+    "question_type": "总结归纳",
+    "ground_truth": "联想至像大象系列打印机支持多种打印方式，包括通过手机中的文件打印（如使用智享家App）、通过电脑中的文件打印（如使用Lenovo Page App），以及取消打印功能。此外，还可以通过机身按键进行复印操作。",
+    "relevant_doc_ids": [
+      "联想至像大象系列打印机用户手册V1.02-20250217"
+    ],
+    "relevant_keywords": [
+      "联想",
+      "至像大象",
+      "打印机",
+      "打印方式"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-042",
+    "category": "华为平板电脑",
+    "question": "华为平板C5有哪些配件及扩展连线选项？",
+    "question_type": "总结归纳",
+    "ground_truth": "华为平板C5提供的配件及扩展连线选项包括蓝牙鼠标（可选配件）和HUAWEI Mini RJ45转RJ45转接线（部分机型配置）。这些配件可以帮助用户更好地使用平板电脑的各种功能。",
+    "relevant_doc_ids": [
+      "华为平板 C5 平板用户指南-(BZT3-W59&W69,EMUI10.1_01,ZH-CN)"
+    ],
+    "relevant_keywords": [
+      "华为",
+      "平板C5",
+      "配件",
+      "扩展连线"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-044",
+    "category": "奔图打印机",
+    "question": "奔图P3030D黑白激光打印机和P3500系列打印机的主要区别是什么？",
+    "question_type": "总结归纳",
+    "ground_truth": "奔图P3030D黑白激光打印机是一款单功能打印机，主要特点是快速打印和高分辨率输出。而P3500系列打印机则为黑白单功能激光打印机，可能具有不同的打印速度和纸张处理能力。具体区别需要查看各自的产品规格参数。",
+    "relevant_doc_ids": [
+      "Pantum P3030 User Guide zh_CN V1_2",
+      "PantumP3500用户手册zh_CNV1.2_1644316283788"
+    ],
+    "relevant_keywords": [
+      "奔图",
+      "P3030D",
+      "P3500",
+      "打印机",
+      "区别"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-045",
+    "category": "华为擎云笔记本电脑",
+    "question": "华为擎云W585和W585X的主要硬件配置和操作系统有哪些不同？",
+    "question_type": "总结归纳",
+    "ground_truth": "华为擎云W585和W585X的主要硬件配置和操作系统有所不同。W585运行KOS&UOS操作系统，而W585X也运行KOS&UOS，但版本号略有不同。具体的硬件配置差异需要参考各自的用户指南。两者都支持快捷键功能和BIOS设置。",
+    "relevant_doc_ids": [
+      "华为擎云W585 用户指南-(PGUV,KOS&UOS_01,zh-cn)",
+      "华为擎云W585X 用户指南-(PGUX,KOS&UOS_02,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "华为",
+      "擎云",
+      "W585",
+      "W585X",
+      "硬件配置",
+      "操作系统"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-046",
+    "category": "数字万用表",
+    "question": "RS-PRORS-12数字万用表的主要功能和使用方法是什么？",
+    "question_type": "总结归纳",
+    "ground_truth": "RS-PRORS-12数字万用表的主要功能包括测量交/直流电压、直流电流（mA和A）、电阻以及进行短路测试。具体量程如下：直流/交流电压最大输入为600V，其中200mV量程下最大输入为200Vrms；mA直流的最大输入为200mA，并配有250V快速熔断保险丝；A DC的最大输入为10A，同样配备250V快速熔断保险丝，但使用时限制为每15分钟最多一次，每次需30秒；电阻及短路测试支持的最大输入为250Vrms，最长持续时间为15秒。\n\n使用方法：\n1. 根据需要测量的参数选择正确的功能档位，通过旋转功能选择转盘来设定。\n2. 将红色表笔插入对应的正极端口，黑色表笔则始终插入COM端口。\n3. 对于电流测量，请确保将仪表串联到待测电路中；对于电压或电阻测量，则应并联至被测点。\n4. 开始测量前，请确认所选量程适合当前测量值，避免超出仪表允许范围导致损坏。特别注意，在执行任何高压测量之前，采取适当的安全措施以保护个人安全和设备完整。\n5. 测量完成后，记得关闭电源并将表笔从端口中拔出。如果需要更换电池或保险丝，务必先断开所有连接并确保仪表处于关闭状态。",
+    "relevant_doc_ids": [
+      "万用表RS-12的使用"
+    ],
+    "relevant_keywords": [
+      "RS-PRORS-12",
+      "数字万用表",
+      "功能",
+      "使用方法"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": "[ground_truth质量待审核] [ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-047",
+    "category": "笔记本电脑",
+    "question": "华为擎云W585和HUAWEI MateBook B3-420这两款笔记本在键盘布局上有什么不同？",
+    "question_type": "对比查询",
+    "ground_truth": "华为擎云W585的键盘布局包括快捷键功能介绍和快捷键与功能键切换等，而HUAWEI MateBook B3-420的键盘布局可能会因国家、地区存在差异。具体来说，华为擎云W585强调了键盘的功能性设置，如快捷键的具体功能；MateBook B3-420则提示用户键盘布局可能有所不同，请以实物为准。",
+    "relevant_doc_ids": [
+      "华为擎云W585 用户指南-(PGUV,KOS&UOS_01,zh-cn)",
+      "HUAWEI MateBook B3-420 用户指南-(NDZ,Windows11_01,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "键盘布局",
+      "快捷键功能",
+      "地区差异"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-048",
+    "category": "路由器",
+    "question": "H3C ER2100企业级路由器和H3C MER系列路由器在配置方面有哪些主要区别？",
+    "question_type": "对比查询",
+    "ground_truth": "H3C ER2100企业级路由器的配置手册提供了关于如何配置LA2608与无线控制器互通的详细步骤，而H3C MER系列路由器的手册则介绍了更为复杂的网络管理特性，例如支持多种广域网接口和高级安全特性。ER2100更侧重于基础的企业级连接解决方案，MER系列则面向需要更高灵活性和安全性需求的场景。",
+    "relevant_doc_ids": [
+      "H3C ER2100企业级路由器 用户手册-6W104-整本手册",
+      "H3C MER系列路由器 用户手册-R0821-6W105-整本手册"
+    ],
+    "relevant_keywords": [
+      "配置方法",
+      "企业级连接",
+      "高级安全特性"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-049",
+    "category": "打印机",
+    "question": "奔图P3030D和联想至像大象Elephant黑白激光多功能双面一体机，在首次安装时分别需要注意哪些事项？",
+    "question_type": "对比查询",
+    "ground_truth": "对于奔图P3030D，用户需按照用户指南中的步骤进行初次设置，包括电源连接及初始化设置。联想至像大象Elephant黑白激光多功能双面一体机的首次安装除了基本的硬件连接外，还需要通过智享家App或Lenovo Page应用为打印机配置网络，确保设备可以接入互联网并实现远程打印等功能。",
+    "relevant_doc_ids": [
+      "Pantum P3030 User Guide zh_CN V1_2",
+      "联想至像大象系列打印机用户手册V1.02-20250217"
+    ],
+    "relevant_keywords": [
+      "首次安装",
+      "网络配置",
+      "硬件连接"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-050",
+    "category": "平板电脑",
+    "question": "华为平板C5与华为擎云C5(第4代)之间，在操作系统和支持的应用程序上有何区别？",
+    "question_type": "对比查询",
+    "ground_truth": "华为平板C5运行的是EMUI10.1系统，并且支持一系列预装应用程序和服务。相比之下，华为擎云C5(第4代)采用了最新的HarmonyOS 4.3版本，这使得它能够提供更加流畅的操作体验以及对分布式技术更好的支持，允许用户跨设备无缝操作更多类型的应用程序。",
+    "relevant_doc_ids": [
+      "华为平板 C5 平板用户指南-(BZT3-W59&W69,EMUI10.1_01,ZH-CN)",
+      "华为擎云 C5 (第4代) 用户指南-(BYD5-W10&AL10,HarmonyOS 4.3_01,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "操作系统",
+      "应用程序",
+      "分布式技术"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-051",
+    "category": "网络设备",
+    "question": "Aolynk CB304n Cable网桥和CC系列室内型Cable网络集中器各自的主要功能是什么？它们之间有何区别？",
+    "question_type": "对比查询",
+    "ground_truth": "Aolynk CB304n Cable网桥主要用于将有线网络信号转换为无线信号，以便扩展网络覆盖范围。而Aolynk CC系列室内型Cable网络集中器则是一种用于管理和集中多个Cable网络连接的设备，支持通过Web设置页面或命令行进行本地管理。两者之间的主要区别在于CB304n专注于信号转换与扩展，而CC系列则侧重于网络管理和集中控制。",
+    "relevant_doc_ids": [
+      "Aolynk CB304n Cable网桥 用户手册-5W100-整本手册",
+      "Aolynk CC系列室内型Cable网络集中器 用户手册-6W202-整本手册"
+    ],
+    "relevant_keywords": [
+      "信号转换",
+      "网络管理",
+      "集中控制"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-052",
+    "category": "打印机",
+    "question": "我最近买了一台奔图的打印机，想了解一下怎么设置网络打印？",
+    "question_type": "模糊查询",
+    "ground_truth": "对于奔图P3030D黑白激光打印机，设置网络打印步骤如下：1. 确保打印机和电脑连接到同一网络。2. 在电脑上安装打印机驱动程序。3. 打开控制面板，选择设备和打印机。4. 添加打印机，选择网络打印机，并按照提示完成设置。",
+    "relevant_doc_ids": [
+      "Pantum P3030 User Guide zh_CN V1_2"
+    ],
+    "relevant_keywords": [
+      "奔图",
+      "网络打印",
+      "设置"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-053",
+    "category": "网关",
+    "question": "我家新装了一个无线网关，不知道怎么配置它来连接家里的无线控制器，请问有具体的步骤吗？",
+    "question_type": "模糊查询",
+    "ground_truth": "为了配置H3C LA2608室内无线网关与家里的无线控制器连接，您可以按照以下步骤操作：\n\n1. 配置拨号访问组的拨号控制列表\n   - 在系统视图下输入`dialer-rule 1 ip permit`\n\n2. 配置 DCC 拨号\n   - 进入Cellular-Ethernet2/0接口视图：`[LA2608]interface Cellular-Ethernet2/0`\n   - 设置IP地址为蜂窝网络分配：`[LA2608-Cellular-Ethernet2/0]ip address cellular-allocated`\n   - 启用循环拨号：`[LA2608-Cellular-Ethernet2/0]dialer enable-circular`\n   - 将该接口加入到拨号组1：`[LA2608-Cellular-Ethernet2/0]dialer-group 1`\n   - 设置空闲超时时间为0秒：`[LA2608-Cellular-Ethernet2/0]dialer timer idle 0`\n   - 设置自动拨号间隔为5秒：`[LA2608-Cellular-Ethernet2/0]dialer timer autodial 5`\n   - 根据您的运营商提供的信息设置拨号号码（例如*99#）并启用自动拨号：`[LA2608-Cellular-Ethernet2/0]dialer number *99# autodial`\n   - 开启出站NAT功能：`[LA2608-Cellular-Ethernet2/0]nat outbound`\n   - 完成后退出当前视图：`[LA2608-Cellular-Ethernet2/0]quit`\n\n3. 配置 DNS 解析功能\n   - 在系统视图下开启DNS解析：`[LA2608]dns resolve`\n\n4. 配置静态路由\n   - 添加默认路由指向Cellular-Ethernet2/0接口：`[LA2608]ip route-static 0.0.0.0 0.0.0.0 Cellular-Ethernet2/0`\n\n5. 指定运营商无线控制器的 IP 地址\n   - 设置无线控制器AC的IP地址（请根据实际情况替换IP地址）：`[LA2608] wlan ac ip 60.191.99.143`\n\n完成以上步骤后，您的H3C LA2608室内无线网关应该能够通过3G/4G网络成功连接至指定的无线控制器。请注意，您需要确保已经正确安装了SIM卡，并且设备处于可以接入3G/4G网络的状态。",
+    "relevant_doc_ids": [
+      "H3C LA2608室内无线网关 用户手册-6W100-整本手册"
+    ],
+    "relevant_keywords": [
+      "无线网关",
+      "配置",
+      "无线控制器"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": "[ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-054",
+    "category": "笔记本电脑",
+    "question": "我想知道华为的MateBook B3系列笔记本怎么恢复出厂设置，能给个详细的操作指南吗？",
+    "question_type": "模糊查询",
+    "ground_truth": "根据您提供的文档内容，华为MateBook B3-420系列笔记本电脑可以通过F10一键恢复出厂设置。具体操作步骤如下：\n\n1. 确保您的计算机已连接电源适配器，并且电量充足。\n2. 关闭所有正在运行的应用程序，并保存好重要数据。\n3. 按下键盘上的F10键，这将启动华为电脑管家。\n4. 在华为电脑管家中找到并选择恢复出厂设置的选项，按照屏幕提示完成后续操作。\n\n请注意，在执行恢复出厂设置前，请确保备份好个人重要数据，因为此操作会清除硬盘上的所有用户数据和安装的软件。",
+    "relevant_doc_ids": [
+      "HUAWEI MateBook B3-420 用户指南-(NDZ,Windows11_01,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "华为",
+      "MateBook B3",
+      "恢复出厂设置"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": "[ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-055",
+    "category": "多功能一体机",
+    "question": "我们办公室有一台联想至像大象系列的打印机，可以复印和打印，但是不知道怎么取消打印任务，有人能告诉我吗？",
+    "question_type": "模糊查询",
+    "ground_truth": "使用联想至像大象Elephant黑白激光多功能双面一体机取消打印任务的方法为：1. 在打印机控制面板上找到“取消”或“停止”按钮。2. 按下该按钮以取消当前正在执行的打印任务。3. 如果通过电脑发送的打印任务，可以在电脑的任务管理器中找到对应的打印队列，右键点击要取消的任务，选择“取消”。",
+    "relevant_doc_ids": [
+      "联想至像大象系列打印机用户手册V1.02-20250217"
+    ],
+    "relevant_keywords": [
+      "联想至像大象",
+      "取消打印"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-056",
+    "category": "网络集中器",
+    "question": "我们公司刚买了Aolynk CC系列的Cable网络集中器，想知道如何通过Web界面管理设备，有教程吗？",
+    "question_type": "模糊查询",
+    "ground_truth": "根据《Aolynk CC系列室内型 Cable网络集中器 用户手册》，您可以通过Web设置页面对设备进行本地管理。以下是通过Web界面管理设备的基本步骤：\n\n1. 确保您的计算机与Cable网络集中器连接在同一局域网内，并且能够访问该设备的IP地址。\n2. 打开浏览器，在地址栏输入Cable网络集中器的IP地址，然后按回车键。如果这是首次登录，请参考产品附带的快速安装指南来确定默认的IP地址。\n3. 在弹出的身份验证窗口中输入用户名和密码。如果您是第一次登录，可能需要使用默认的登录凭证，这些信息通常可以在产品的快速安装指南或用户手册中找到。\n4. 登录成功后，您将看到Web管理界面。从这里开始，您可以根据界面上提供的选项来进行各种配置，比如修改网络设置、查看状态信息等。\n\n对于更详细的配置指导，包括如何更改特定设置或执行高级功能，请访问H3C官方网站(www.h3c.com.cn)，在[服务支持/文档中心]栏目下查找相关的硬件安装类、软件升级类、配置类或维护类产品资料。此外，[产品技术]栏目也提供了关于产品和技术的详细介绍，有助于加深理解。",
+    "relevant_doc_ids": [
+      "Aolynk CC系列室内型Cable网络集中器 用户手册-6W202-整本手册"
+    ],
+    "relevant_keywords": [
+      "Aolynk CC系列",
+      "Web管理",
+      "Cable网络集中器"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": "[ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-057",
+    "category": "其他品牌产品",
+    "question": "戴尔XPS 13笔记本电脑的电池续航时间是多少小时？",
+    "question_type": "拒答(知识库无答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [],
+    "relevant_keywords": [
+      "戴尔",
+      "XPS 13",
+      "电池续航"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "拒答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-058",
+    "category": "未知型号",
+    "question": "华为擎云B600的外观设计有哪些特点？",
+    "question_type": "拒答(知识库无答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [],
+    "relevant_keywords": [
+      "华为",
+      "擎云B600",
+      "外观设计"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "拒答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-059",
+    "category": "未知功能",
+    "question": "H3C ER2100企业级路由器支持哪些最新的安全协议？",
+    "question_type": "拒答(知识库无答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [],
+    "relevant_keywords": [
+      "H3C",
+      "ER2100",
+      "安全协议"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "拒答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-060",
+    "category": "未知设备",
+    "question": "Aolynk CB305n Cable网桥的安装步骤是什么？",
+    "question_type": "拒答(知识库无答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [],
+    "relevant_keywords": [
+      "Aolynk",
+      "CB305n",
+      "安装步骤"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "拒答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-061",
+    "category": "未知打印机",
+    "question": "奔图P4000系列打印机的墨盒更换方法是什么？",
+    "question_type": "拒答(知识库无答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [],
+    "relevant_keywords": [
+      "奔图",
+      "P4000",
+      "墨盒更换"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "拒答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-062",
+    "category": "未知烫金机",
+    "question": "HAK200烫金机的操作流程是什么？",
+    "question_type": "拒答(知识库无答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [],
+    "relevant_keywords": [
+      "HAK200",
+      "烫金机",
+      "操作流程"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "拒答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-063",
+    "category": "未知平板电脑",
+    "question": "华为平板C6的系统升级方法是什么？",
+    "question_type": "拒答(知识库无答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [],
+    "relevant_keywords": [
+      "华为",
+      "平板C6",
+      "系统升级"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "拒答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-064",
+    "category": "未知万用表",
+    "question": "RS-PRORS-13数字万用表的使用方法是什么？",
+    "question_type": "拒答(知识库无答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [],
+    "relevant_keywords": [
+      "RS-PRORS-13",
+      "数字万用表",
+      "使用方法"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "拒答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-065",
+    "category": "其他品牌产品",
+    "question": "戴尔XPS 13笔记本电脑的电池续航时间是多少？",
+    "question_type": "拒答(知识库无答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [],
+    "relevant_keywords": [
+      "戴尔",
+      "XPS 13",
+      "电池续航"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "拒答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-066",
+    "category": "华为擎云B530",
+    "question": "华为擎云B530的价格是多少？",
+    "question_type": "拒答(知识库无答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [
+      "华为擎云B530 用户指南-(PUCZ,Windows11_03,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "华为擎云B530",
+      "价格"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "说明无直接答案",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-067",
+    "category": "华为擎云W585",
+    "question": "华为擎云W585的键盘背光灯如何开启？",
+    "question_type": "无答案(部分相关但无直接答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [
+      "华为擎云W585 用户指南-(PGUV,KOS&UOS_01,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "华为擎云W585",
+      "键盘",
+      "背光灯"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "说明无直接答案",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-068",
+    "category": "H3C LA2608室内无线网关",
+    "question": "H3C LA2608室内无线网关支持的最大用户数是多少？",
+    "question_type": "无答案(部分相关但无直接答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [
+      "H3C LA2608室内无线网关 用户手册-6W100-整本手册"
+    ],
+    "relevant_keywords": [
+      "H3C LA2608",
+      "最大用户数"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "说明无直接答案",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-069",
+    "category": "联想至像大象系列打印机",
+    "question": "联想至像大象Elephant黑白激光多功能双面一体机的保修期是多久？",
+    "question_type": "无答案(部分相关但无直接答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [
+      "联想至像大象系列打印机用户手册V1.02-20250217"
+    ],
+    "relevant_keywords": [
+      "联想至像大象",
+      "保修期"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "说明无直接答案",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-070",
+    "category": "Aolynk CC系列室内型Cable网络集中器",
+    "question": "Aolynk CC系列室内型Cable网络集中器的电源输入规格是多少？",
+    "question_type": "无答案(部分相关但无直接答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [
+      "Aolynk CC系列室内型Cable网络集中器 用户手册-6W202-整本手册"
+    ],
+    "relevant_keywords": [
+      "Aolynk CC系列",
+      "电源输入规格"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "说明无直接答案",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-071",
+    "category": "华为MateBook B3-420",
+    "question": "华为MateBook B3-420的电池续航时间是多少小时？",
+    "question_type": "无答案(部分相关但无直接答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [
+      "HUAWEI MateBook B3-420 用户指南-(NDZ,Windows11_01,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "华为MateBook B3-420",
+      "电池续航时间"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "说明无直接答案",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-072",
+    "category": "奔图P3030D黑白激光打印机",
+    "question": "奔图P3030D黑白激光打印机的打印速度是多少页每分钟？",
+    "question_type": "无答案(部分相关但无直接答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [
+      "Pantum P3030 User Guide zh_CN V1_2"
+    ],
+    "relevant_keywords": [
+      "奔图P3030D",
+      "打印速度"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "说明无直接答案",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-073",
+    "category": "迅饶LUMISCAN网关",
+    "question": "迅饶LUMISCAN网关的尺寸是多少？",
+    "question_type": "无答案(部分相关但无直接答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [
+      "迅饶网关与小米产品通讯配置说明"
+    ],
+    "relevant_keywords": [
+      "迅饶LUMISCAN网关",
+      "尺寸"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "说明无直接答案",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-074",
+    "category": "华为平板C5",
+    "question": "华为平板C5的屏幕分辨率是多少？",
+    "question_type": "无答案(部分相关但无直接答案)",
+    "ground_truth": "知识库中无相关信息，应拒答",
+    "relevant_doc_ids": [
+      "华为平板 C5 平板用户指南-(BZT3-W59&W69,EMUI10.1_01,ZH-CN)"
+    ],
+    "relevant_keywords": [
+      "华为平板C5",
+      "屏幕分辨率"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "说明无直接答案",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-075",
+    "category": "华为擎云W585",
+    "question": "我的华为擎云W585电脑突然无法开机了，我该怎么做才能排查问题？",
+    "question_type": "故障排查",
+    "ground_truth": "1. 确认电源适配器已正确连接并且电源插座工作正常。2. 检查电源指示灯是否亮起，如果未亮，请尝试更换电源适配器或检查插座是否有电。3. 如果电源指示灯亮但电脑仍无法启动，可能是电池问题，尝试移除电池（如果可拆卸）后直接使用电源适配器启动。4. 若以上步骤均无效，可能需要恢复BIOS默认设置：在关机状态下按住F2键进入BIOS界面，选择“恢复BIOS默认设置”选项，保存并退出。",
+    "relevant_doc_ids": [
+      "华为擎云W585 用户指南-(PGUV,KOS&UOS_01,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "电源",
+      "BIOS",
+      "无法开机"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "操作过程中请确保手部干燥，避免短路风险。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-076",
+    "category": "H3C LA2608室内无线网关",
+    "question": "我发现我的H3C LA2608无线网关与无线控制器之间通信出现问题，应该怎样解决？",
+    "question_type": "故障排查",
+    "ground_truth": "1. 首先确认LA2608网关的配置是否正确，包括IP地址、子网掩码等网络参数。2. 检查运营商无线控制器的配置信息是否匹配。3. 使用ping命令测试从LA2608到无线控制器的连通性，若不通则需检查网络线路和防火墙设置。4. 重新启动LA2608网关及无线控制器，看是否能恢复正常通信。",
+    "relevant_doc_ids": [
+      "H3C LA2608室内无线网关 用户手册-6W100-整本手册"
+    ],
+    "relevant_keywords": [
+      "无线网关",
+      "无线控制器",
+      "通信问题"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "修改网络设备配置时请注意备份当前设置，防止误操作导致网络中断。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-077",
+    "category": "华为MateBook B3-420",
+    "question": "华为MateBook B3-420笔记本电脑触摸板失灵了怎么办？",
+    "question_type": "故障排查",
+    "ground_truth": "1. 尝试重启计算机，查看触摸板功能是否恢复。2. 进入设备管理器，找到‘鼠标和其他指针设备’，右键点击触摸板对应的设备，选择更新驱动程序。3. 如果驱动更新无效，可以考虑回滚驱动程序到之前版本。4. 若上述方法都未能解决问题，建议进行系统还原或联系客服寻求进一步帮助。",
+    "relevant_doc_ids": [
+      "HUAWEI MateBook B3-420 用户指南-(NDZ,Windows11_01,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "触摸板",
+      "失灵",
+      "驱动更新"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "更新或回滚驱动前请确保已经备份重要数据。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-078",
+    "category": "联想至像大象系列打印机",
+    "question": "我的联想至像大象打印机打印出来的文档有黑线，如何处理这个问题？",
+    "question_type": "故障排查",
+    "ground_truth": "1. 打开打印机盖子，轻轻清洁硒鼓表面以及激光扫描单元上的灰尘或异物。2. 更换新的墨粉盒试试，有时候墨粉分布不均也会造成此类现象。3. 通过打印机控制面板执行打印质量调整功能，优化输出效果。4. 如果问题依旧存在，可能是硬件损坏如感光鼓老化，建议联系专业维修人员检修。",
+    "relevant_doc_ids": [
+      "联想至像大象系列打印机用户手册V1.02-20250217"
+    ],
+    "relevant_keywords": [
+      "打印机",
+      "黑线",
+      "清洁"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "清洁内部组件时要小心不要触碰任何电路板，以防静电损伤电子元件。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-079",
+    "category": "奔图P3030D黑白激光打印机",
+    "question": "为什么我的奔图P3030D打印机总是卡纸，应该如何解决？",
+    "question_type": "故障排查",
+    "ground_truth": "1. 关闭打印机电源，打开前面板取出卡住的纸张。2. 检查进纸路径内是否有残留碎片或其他障碍物，并清除干净。3. 调整纸张托盘内的纸张位置，确保其平整且没有翘曲。4. 根据官方推荐定期维护打印机，清理滚轮等关键部位以减少卡纸几率。",
+    "relevant_doc_ids": [
+      "Pantum P3030 User Guide zh_CN V1_2"
+    ],
+    "relevant_keywords": [
+      "打印机",
+      "卡纸",
+      "维护"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "处理卡纸时动作要轻柔，避免用力拉扯导致部件损坏。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-080",
+    "category": "Aolynk CB304n Cable网桥",
+    "question": "Aolynk CB304n网桥信号不稳定，经常断开连接，怎么解决？",
+    "question_type": "故障排查",
+    "ground_truth": "1. 重新定位网桥的位置，尽量远离其他电子设备，减少干扰源。2. 更新网桥固件至最新版本，可通过Web界面访问设备管理页面完成升级。3. 检查两端连接线缆是否存在接触不良的情况，必要时更换新线。4. 调整频道设置，避开拥堵频段，提高传输稳定性。",
+    "relevant_doc_ids": [
+      "Aolynk CB304n Cable网桥 用户手册-5W100-整本手册"
+    ],
+    "relevant_keywords": [
+      "网桥",
+      "信号不稳定",
+      "固件更新"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "在进行任何软件升级前，请确保已阅读相关说明文件并做好数据备份。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-081",
+    "category": "H3C ER2100企业级路由器",
+    "question": "我的H3C ER2100路由器设置了端口映射但是外部无法访问内部服务器，是什么原因造成的，该如何解决？",
+    "question_type": "故障排查",
+    "ground_truth": "1. 确认端口映射规则设置无误，特别是内外网端口号对应关系。2. 检查路由器防火墙设置，确保允许目标端口的数据包通过。3. 查看ISP提供的公网IP地址是否为固定IP，如果是动态IP，则需要申请静态IP服务。4. 利用telnet工具从外网测试目标端口连通情况，根据结果进一步诊断。",
+    "relevant_doc_ids": [
+      "H3C ER2100企业级路由器 用户手册-6W104-整本手册"
+    ],
+    "relevant_keywords": [
+      "路由器",
+      "端口映射",
+      "防火墙"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "修改防火墙规则时注意不要开放不必要的端口，以免增加安全风险。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-082",
+    "category": "华为平板 C5",
+    "question": "我的华为平板C5屏幕触摸反应迟钝，有时甚至完全没反应，这该怎么解决？",
+    "question_type": "故障排查",
+    "ground_truth": "1. 清洁屏幕表面，去除油渍或污垢。2. 重启平板电脑，释放内存资源。3. 在设置菜单中关闭所有正在运行的应用程序，减轻处理器负担。4. 检查最近安装的应用程序是否对系统性能产生了负面影响，尝试卸载可疑应用。5. 若问题仍然存在，可能需要恢复出厂设置来彻底修复。",
+    "relevant_doc_ids": [
+      "华为平板 C5 平板用户指南-(BZT3-W59&W69,EMUI10.1_01,ZH-CN)"
+    ],
+    "relevant_keywords": [
+      "平板",
+      "触摸屏",
+      "反应迟钝"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "恢复出厂设置前务必做好个人资料的备份。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-083",
+    "category": "华为擎云W585",
+    "question": "使用华为擎云W585时，如果需要设置BIOS密码，应该怎么做？",
+    "question_type": "安全/边界问题",
+    "ground_truth": "设置BIOS密码的步骤如下：1. 开机后按F2键进入BIOS设置界面。2. 在BIOS主菜单中选择“Security”选项。3. 选择“Set Supervisor Password”或“Set User Password”，根据提示输入新密码并确认。4. 按F10保存设置并退出。",
+    "relevant_doc_ids": [
+      "华为擎云W585 用户指南-(PGUV,KOS&UOS_01,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "BIOS设置",
+      "设置BIOS密码"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "确保在设置BIOS密码前备份重要数据，以防忘记密码导致无法访问系统。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-084",
+    "category": "H3C LA2608室内无线网关",
+    "question": "如何验证H3C LA2608室内无线网关与无线控制器是否连通？",
+    "question_type": "安全/边界问题",
+    "ground_truth": "验证H3C LA2608室内无线网关与无线控制器是否连通的步骤如下：1. 登录到LA2608的管理界面。2. 进入“网络状态”或“连接状态”页面查看当前的连接情况。3. 如果显示已成功连接，则说明两者已经连通；若未连通，请检查配置信息是否正确，并重新配置。",
+    "relevant_doc_ids": [
+      "H3C LA2608室内无线网关 用户手册-6W100-整本手册"
+    ],
+    "relevant_keywords": [
+      "验证连通性",
+      "无线控制器"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "确保在网络配置过程中不泄露敏感信息，避免未经授权的访问。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-085",
+    "category": "联想至像大象Elephant黑白激光多功能双面一体机",
+    "question": "联想至像大象打印机在首次安装时需要注意哪些安全事项？",
+    "question_type": "安全/边界问题",
+    "ground_truth": "首次安装联想至像大象打印机时的安全注意事项包括：1. 确保电源线和USB线连接稳固，避免松动造成短路。2. 避免将打印机放置在潮湿或高温环境中，以免影响设备寿命及安全性。3. 使用原装墨粉盒以保证打印质量和机器安全。4. 安装完成后进行一次全面的硬件自检，确保所有功能正常运行。",
+    "relevant_doc_ids": [
+      "联想至像大象系列打印机用户手册V1.02-20250217"
+    ],
+    "relevant_keywords": [
+      "首次安装",
+      "安全事项"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "务必遵循制造商提供的安装指导，不要擅自更改设备内部结构。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-086",
+    "category": "华为平板 C5",
+    "question": "当华为平板C5丢失了个人数据保护相关的设置在哪里可以找到？",
+    "question_type": "安全/边界问题",
+    "ground_truth": "华为平板C5关于个人数据保护的相关设置可以在以下路径找到：1. 打开“设置”应用。2. 选择“隐私”选项。3. 在隐私菜单下，可以看到多个与个人信息保护相关的子项，如位置服务、应用权限等。通过调整这些设置来增强您的数据安全性。",
+    "relevant_doc_ids": [
+      "华为平板 C5 平板用户指南-(BZT3-W59&W69,EMUI10.1_01,ZH-CN)"
+    ],
+    "relevant_keywords": [
+      "个人数据保护",
+      "隐私设置"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "定期检查并更新隐私设置，保持软件版本最新，有助于提高设备安全性。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-087",
+    "category": "Aolynk CC系列室内型Cable网络集中器",
+    "question": "在对Aolynk CC系列室内型Cable网络集中器进行本地管理时，有哪些重要的安全警告信息？",
+    "question_type": "安全/边界问题",
+    "ground_truth": "对于Aolynk CC系列室内型Cable网络集中器，在进行本地管理时需注意的安全警告信息包括：1. 不得随意修改默认登录凭证（用户名和密码），以防止未授权访问。2. 任何时间都应保持最新的固件版本，以修复可能存在的安全漏洞。3. 避免直接暴露于公共网络环境，建议部署防火墙或其他网络安全措施。",
+    "relevant_doc_ids": [
+      "Aolynk CC系列室内型Cable网络集中器 用户手册-6W202-整本手册"
+    ],
+    "relevant_keywords": [
+      "本地管理",
+      "安全警告"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "遵守所有安全指南，定期审查日志文件，监测异常活动。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-088",
+    "category": "华为笔记本电脑",
+    "question": "我想了解一下华为擎云W585和MateBook B3-420这两款笔记本的键盘布局有什么区别，尤其是快捷键的功能有哪些不同？",
+    "question_type": "超长文本理解",
+    "ground_truth": "华为擎云W585和MateBook B3-420这两款笔记本的键盘布局在快捷键功能上存在一些差异。具体如下：\n\n对于华为擎云W585，其部分型号的F1、F2等键默认为快捷键模式，支持的功能包括：\n- F1：降低屏幕亮度（仅支持华为品牌显示器）\n- F2：增强屏幕亮度（仅支持华为品牌显示器）\n- F4：开启或关闭静音\n- F5：减小音量\n- F6：增大音量\n- F8：切换投影屏幕模式\n\n如果需要将这些键作为功能键使用，可以通过按下Fn键来实现模式切换。当Fn键指示灯亮起时，表示已进入功能键模式；再次按Fn键使指示灯熄灭，则返回到快捷键模式。\n\n而HUAWEI MateBook B3-420的F1至F10键也默认设置为快捷键模式，提供的功能更为丰富，具体如下：\n- F1：降低屏幕亮度\n- F2：增强屏幕亮度\n- F3：开启或关闭键盘背光，并调节背光亮度（若该按键无图标，则不支持此功能）\n- F4：开启或关闭静音\n- F5：减小音量\n- F6：增大音量\n- F7：开启或关闭麦克风\n- F8：切换屏幕投影模式\n- F9：开启或关闭无线网络\n- F10：启动华为电脑管家\n\n同样地，在MateBook B3-420上也可以通过按下Fn键来切换F1至F10之间的功能键与快捷键模式。此外，用户还可以通过访问华为电脑管家内的设置中心调整键盘设置，选择功能键优先或热键优先，以满足个人偏好。",
+    "relevant_doc_ids": [
+      "华为擎云W585 用户指南-(PGUV,KOS&UOS_01,zh-cn)",
+      "HUAWEI MateBook B3-420 用户指南-(NDZ,Windows11_01,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "键盘布局",
+      "快捷键功能",
+      "华为擎云W585",
+      "MateBook B3-420"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "需要从两个不同的文档中提取信息并进行对比分析",
+    "safety_notes": "",
+    "notes": "[ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-089",
+    "category": "网络设备",
+    "question": "如果我想要将H3C LA2608室内无线网关与运营商的无线控制器连接起来，具体应该如何配置？请给出详细的步骤。",
+    "question_type": "超长文本理解",
+    "ground_truth": "1. 配置LA2608\n   1. 进入系统视图：`<LA2608>system-view`\n   2. 配置拨号访问组的拨号控制列表：`[LA2608]dialer-rule 1 ip permit`\n   3. 进入Cellular-Ethernet2/0接口视图：`[LA2608]interface Cellular-Ethernet2/0`\n   4. 设置IP地址为蜂窝网络分配：`[LA2608-Cellular-Ethernet2/0]ip address cellular-allocated`\n   5. 启用循环拨号：`[LA2608-Cellular-Ethernet2/0]dialer enable-circular`\n   6. 将该接口加入到拨号组1：`[LA2608-Cellular-Ethernet2/0]dialer-group 1`\n   7. 设置空闲超时时间为0秒：`[LA2608-Cellular-Ethernet2/0]dialer timer idle 0`\n   8. 设置自动拨号间隔为5秒：`[LA2608-Cellular-Ethernet2/0]dialer timer autodial 5`\n   9. 配置自动拨号号码（以*99#为例，实际请根据运营商提供信息调整）：`[LA2608-Cellular-Ethernet2/0]dialer number *99# autodial`\n   10. 开启NAT出站功能：`[LA2608-Cellular-Ethernet2/0]nat outbound`\n   11. 退出接口视图：`[LA2608-Cellular-Ethernet2/0]quit`\n   12. 启用DNS解析：`[LA2608]dns resolve`\n   13. 添加默认路由指向Cellular-Ethernet2/0接口：`[LA2608]ip route-static 0.0.0.0 0.0.0.0 Cellular-Ethernet2/0`\n   14. 指定无线控制器的IP地址（示例中为60.191.99.143，请替换为实际使用的IP地址）：`[LA2608] wlan ac ip 60.191.99.143`\n\n2. 配置运营商无线控制器\n   1. 进入系统视图：`<AC>system-view`\n   2. 创建业务VLAN 2：`[AC]vlan 2`；然后退出VLAN配置模式：`[AC-vlan2] quit`\n   3. 创建WLAN-ESS 1接口并将其加入到业务VLAN 2：`[AC]interface WLAN-ESS 1`；设置端口接入VLAN 2：`[AC-WLAN-ESS1]port access vlan 2`；退出接口视图：`[AC-WLAN-ESS1]quit`\n   4. 配置服务模板1使用明文认证方式，并设置SSID名称（此处示例为ssidh3c）：`[AC]wlan service-template 1 clear`；进入服务模板配置模式：`[AC-wlan-st-1]ssid ssidh3c`",
+    "relevant_doc_ids": [
+      "H3C LA2608室内无线网关 用户手册-6W100-整本手册"
+    ],
+    "relevant_keywords": [
+      "H3C LA2608",
+      "无线网关",
+      "配置",
+      "无线控制器"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": "[ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-090",
+    "category": "打印机",
+    "question": "对于联想至像大象Elephant黑白激光多功能双面一体机，如何首次安装并通过智享家App给它配置网络？另外，在打印过程中遇到卡纸问题时应该怎样处理？",
+    "question_type": "超长文本理解",
+    "ground_truth": "首次安装联想至像大象Elephant打印机并配置网络的方法如下：1. 将打印机放置于平稳桌面，移除所有包装材料；2. 连接电源线，并按下电源按钮启动打印机；3. 下载安装‘智享家’应用程序；4. 打开应用，选择添加新设备选项，按照屏幕提示操作直至完成网络设置。若在打印时出现卡纸现象，则应先关闭打印机电源，轻轻打开前盖板或纸盒，小心地取出被卡住的纸张，检查是否有残留碎片清理干净后重新尝试打印。",
+    "relevant_doc_ids": [
+      "联想至像大象系列打印机用户手册V1.02-20250217"
+    ],
+    "relevant_keywords": [
+      "联想至像大象",
+      "打印机",
+      "首次安装",
+      "网络配置",
+      "卡纸处理"
+    ],
+    "difficulty": "困难",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "操作时请注意安全，避免触电或受伤。",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-091",
+    "category": "华为笔记本电脑",
+    "question": "华为的那个B3-420笔记本怎么开机啊？",
+    "question_type": "同义词/口语化查询",
+    "ground_truth": "要开启华为MateBook B3-420，首先确保笔记本已连接电源或电池有电。接着按下电源键，位于键盘右上角，按一下即可启动计算机。",
+    "relevant_doc_ids": [
+      "HUAWEI MateBook B3-420 用户指南-(NDZ,Windows11_01,zh-cn)"
+    ],
+    "relevant_keywords": [
+      "华为",
+      "MateBook B3-420",
+      "开机"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-092",
+    "category": "无线网关",
+    "question": "LA2608这个室内无线网关怎么配置才能和控制器通信？",
+    "question_type": "同义词/口语化查询",
+    "ground_truth": "为了配置H3C LA2608室内无线网关与无线控制器通信，需要按照以下步骤进行操作：\n\n1. 配置拨号访问组的拨号控制列表\n   - 进入系统视图：`<LA2608>system-view`\n   - 设置允许IP数据包通过的规则：`[LA2608]dialer-rule 1 ip permit`\n\n2. 配置DCC拨号\n   - 切换到Cellular-Ethernet2/0接口：`[LA2608]interface Cellular-Ethernet2/0`\n   - 设置IP地址为蜂窝网络分配：`[LA2608-Cellular-Ethernet2/0]ip address cellular-allocated`\n   - 启用循环重拨功能：`[LA2608-Cellular-Ethernet2/0]dialer enable-circular`\n   - 将该接口加入拨号组1：`[LA2608-Cellular-Ethernet2/0]dialer-group 1`\n   - 设置空闲超时时间为0秒：`[LA2608-Cellular-Ethernet2/0]dialer timer idle 0`\n   - 设置自动拨号间隔为5秒：`[LA2608-Cellular-Ethernet2/0]dialer timer autodial 5`\n   - 配置拨号号码（此处以*99#为例，实际应根据运营商提供的信息调整）：`[LA2608-Cellular-Ethernet2/0]dialer number *99# autodial`\n   - 开启NAT出站转换：`[LA2608-Cellular-Ethernet2/0]nat outbound`\n   - 退出当前接口配置模式：`[LA2608-Cellular-Ethernet2/0]quit`\n\n3. 配置DNS解析功能\n   - 在系统视图下启用DNS解析：`[LA2608]dns resolve`\n\n4. 配置静态路由\n   - 添加默认路由指向Cellular-Ethernet2/0接口：`[LA2608]ip route-static 0.0.0.0 0.0.0.0 Cellular-Ethernet2/0`\n\n5. 指定运营商无线控制器的IP地址\n   - 设置无线控制器AC的IP地址（示例中使用60.191.99.143，请替换为实际使用的IP地址）：`[LA2608] wlan ac ip 60.191.99.143`\n\n完成以上步骤后，LA2608将能够通过3G/4G网络连接至指定的无线控制器，并提供无线服务。请注意，上述配置中的某些参数如拨号号码等可能需要根据实际情况或运营商的具体要求进行适当调整。",
+    "relevant_doc_ids": [
+      "H3C LA2608室内无线网关 用户手册-6W100-整本手册"
+    ],
+    "relevant_keywords": [
+      "H3C",
+      "LA2608",
+      "配置",
+      "无线控制器"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": "[ground_truth已重新生成]"
+  },
+  {
+    "sample_id": "TT-093",
+    "category": "打印机",
+    "question": "奔图P3030D这台打印机的用户指南在哪找？",
+    "question_type": "同义词/口语化查询",
+    "ground_truth": "奔图P3030D黑白激光打印机的用户指南可以在文档《Pantum P3030 User Guide zh_CN V1_2》中找到。",
+    "relevant_doc_ids": [
+      "Pantum P3030 User Guide zh_CN V1_2"
+    ],
+    "relevant_keywords": [
+      "奔图",
+      "P3030D",
+      "用户指南"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-094",
+    "category": "平板电脑",
+    "question": "华为平板C5怎么使用蓝牙鼠标？",
+    "question_type": "同义词/口语化查询",
+    "ground_truth": "在华为平板 C5 上使用蓝牙鼠标，您需要按照以下步骤操作：1. 打开平板的设置菜单；2. 进入‘蓝牙’选项；3. 开启蓝牙功能；4. 将蓝牙鼠标置于配对模式；5. 在平板上选择搜索到的鼠标设备进行配对。配对成功后即可正常使用。",
+    "relevant_doc_ids": [
+      "华为平板 C5 平板用户指南-(BZT3-W59&W69,EMUI10.1_01,ZH-CN)"
+    ],
+    "relevant_keywords": [
+      "华为",
+      "平板C5",
+      "蓝牙鼠标"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-095",
+    "category": "多功能一体机",
+    "question": "联想至像大象系列打印机如何取消打印任务？",
+    "question_type": "同义词/口语化查询",
+    "ground_truth": "要取消联想至像大象Elephant黑白激光多功能双面一体机上的打印任务，请按照以下步骤操作：1. 打开打印机控制面板；2. 寻找并点击‘取消’按钮或类似选项来停止当前打印任务。如果通过电脑发送的打印任务，还可以直接在电脑端的任务管理器中取消。",
+    "relevant_doc_ids": [
+      "联想至像大象系列打印机用户手册V1.02-20250217"
+    ],
+    "relevant_keywords": [
+      "联想",
+      "至像大象",
+      "取消打印"
+    ],
+    "difficulty": "简单",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "",
+    "notes": ""
+  },
+  {
+    "sample_id": "TT-096",
+    "category": "产品安全",
+    "question": "HAK 180 烫金机在使用过程中有哪些重要的安全注意事项？",
+    "question_type": "总结归纳",
+    "ground_truth": "1. 在使用设备前，请先阅读并理解产品安全手册和使用说明书。2. 不要在未去除所有包装材料的情况下使用本设备，以避免火灾风险。3. 设备应放置于温度保持在10°C至32°C之间、湿度保持在20%到80%之间的环境中，并远离阳光直射、过热源、腐蚀性气体及湿气。4. 如果遇到设备异常高温、冒烟或有强烈气味等情况时，应立即断开电源，并联系Brother呼叫中心或当地经销商。",
+    "relevant_doc_ids": [
+      "hak180产品安全手册"
+    ],
+    "relevant_keywords": [
+      "烫金机",
+      "安全操作",
+      "环境要求"
+    ],
+    "difficulty": "中等",
+    "expected_behavior": "正常回答",
+    "multi_hop_reasoning_chain": "",
+    "safety_notes": "涉及安全操作，需准确",
+    "notes": "[补充样本]"
+  }
+]

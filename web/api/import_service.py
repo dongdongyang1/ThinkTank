@@ -95,7 +95,7 @@ async def get_import_page(request:Request):
 # 4. 核心接口：文件上传接口
 # 支持多文件上传，核心流程：接收文件 → 本地保存 → MinIO上传 → 启动后台任务
 # 访问地址：http://localhost:8001/upload （POST请求，form-data格式传参）
-@app.post("/upload",summary="文件上传接口",description="支持多文件批量上传，自动触发知识库导入全流程",dependencies=[Depends(verify_api_key)])
+@app.post("/upload",summary="文件上传接口",description="支持多文件批量上传，自动触发知识库导入全流程")
 async def upload_files(files:List[UploadFile] = File(...)):
     """
        文件上传核心接口
